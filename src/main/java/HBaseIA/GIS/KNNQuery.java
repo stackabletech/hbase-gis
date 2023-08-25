@@ -4,11 +4,16 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Queue;
 
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
 
 import HBaseIA.GIS.model.DistanceComparator;
@@ -25,39 +30,37 @@ public class KNNQuery {
   static final byte[] X_COL = "lon".getBytes();
   static final byte[] Y_COL = "lat".getBytes();
 
-  private static final String usage =
-    "KNNQuery lon lat n\n" +
-    "  help - print this message and exit.\n" +
-    "  lon, lat - query position.\n" +
-    "  n - the number of neighbors to return.";
+  private static final String usage = "KNNQuery lon lat n\n" +
+      "  help - print this message and exit.\n" +
+      "  lon, lat - query position.\n" +
+      "  n - the number of neighbors to return.";
 
-  final HTablePool pool;
+  final Connection connection;
   int precision = 7;
 
-  public KNNQuery(HTablePool pool) {
-    this.pool = pool;
+  public KNNQuery(final Connection connection) {
+    this.connection = connection;
   }
 
-  public KNNQuery(HTablePool pool, int characterPrecision) {
-    this.pool = pool;
+  public KNNQuery(Connection connection, int characterPrecision) {
+    this.connection = connection;
     this.precision = characterPrecision;
   }
 
   Queue<QueryMatch> takeN(Comparator<QueryMatch> comp,
-                               String prefix,
-                               int n) throws IOException {
-    Queue<QueryMatch> candidates
-      = MinMaxPriorityQueue.orderedBy(comp)
-      .maximumSize(n)
-      .create();
+      String prefix,
+      int n) throws IOException {
+    Queue<QueryMatch> candidates = MinMaxPriorityQueue.orderedBy(comp)
+        .maximumSize(n)
+        .create();
 
-    Scan scan = new Scan(prefix.getBytes());
+    Scan scan = new Scan().withStartRow(prefix.getBytes());
     scan.setFilter(new PrefixFilter(prefix.getBytes()));
     scan.addFamily(FAMILY);
-    scan.setMaxVersions(1);
+    scan.readVersions(1);
     scan.setCaching(50);
 
-    HTableInterface table = pool.getTable(TABLE);
+    Table table = connection.getTable(TableName.valueOf(TABLE));
 
     int cnt = 0;
     ResultScanner scanner = table.getScanner(scan);
@@ -67,26 +70,25 @@ public class KNNQuery {
       String lon = new String(r.getValue(FAMILY, X_COL));
       String lat = new String(r.getValue(FAMILY, Y_COL));
       candidates.add(new QueryMatch(id, hash,
-                                    Double.parseDouble(lon),
-                                    Double.parseDouble(lat)));
+          Double.parseDouble(lon),
+          Double.parseDouble(lat)));
       cnt++;
     }
 
     table.close();
 
     System.out.println(
-      String.format("Scan over '%s' returned %s candidates.",
-                    prefix, cnt));
+        String.format("Scan over '%s' returned %s candidates.",
+            prefix, cnt));
     return candidates;
   }
 
   public Queue<QueryMatch> queryKNN(double lat, double lon, int n)
-    throws IOException {
+      throws IOException {
     DistanceComparator comp = new DistanceComparator(lon, lat);
-    Queue<QueryMatch> ret
-      = MinMaxPriorityQueue.orderedBy(comp)
-      .maximumSize(n)
-      .create();
+    Queue<QueryMatch> ret = MinMaxPriorityQueue.orderedBy(comp)
+        .maximumSize(n)
+        .create();
 
     GeoHash target = GeoHash.withCharacterPrecision(lat, lon, precision);
     ret.addAll(takeN(comp, target.toBase32(), n));
@@ -108,15 +110,22 @@ public class KNNQuery {
     double lat = Double.parseDouble(args[1]);
     int n = Integer.parseInt(args[2]);
 
-    HTablePool pool = new HTablePool();
-    KNNQuery q = new KNNQuery(pool);
-    Queue<QueryMatch> ret = q.queryKNN(lat, lon, n);
+    final Configuration conf = HBaseConfiguration.create();
 
-    QueryMatch m;
-    while ((m = ret.poll()) != null) {
-      System.out.println(m);
+    HBaseAdmin.available(conf);
+
+    Connection connection = ConnectionFactory.createConnection(conf);
+    try {
+
+      KNNQuery q = new KNNQuery(connection);
+      Queue<QueryMatch> ret = q.queryKNN(lat, lon, n);
+
+      QueryMatch m;
+      while ((m = ret.poll()) != null) {
+        System.out.println(m);
+      }
+    } finally {
+      connection.close();
     }
-
-    pool.close();
   }
 }

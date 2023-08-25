@@ -8,35 +8,41 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.commons.collections.iterators.ArrayIterator;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Put;
-
-import ch.hsr.geohash.GeoHash;
+import org.apache.hadoop.hbase.client.Table;
 
 import com.google.common.base.Splitter;
 
+import ch.hsr.geohash.GeoHash;
+
 public class Ingest {
 
-  private static final String usage =
-    "ingest table source.tsv\n" +
-    "  help - print this message and exit.\n" +
-    "  table - the target table to load.\n" +
-    "  source.tsv - path to the tsv file to load.\n" +
-    "\n" +
-    "load data from source.tsv. assumes new-line delimited, tab-separated\n" +
-    "records. drops the first line. generates a geohash for the rowkey.\n" +
-    "records are stored in columns in the 'a' familt, columns are:\n" +
-    "  lon,lat,id,name,address,city,url,phone,type,zip\n";
+  private static final String usage = "ingest table source.tsv\n" +
+      "  help - print this message and exit.\n" +
+      "  table - the target table to load.\n" +
+      "  source.tsv - path to the tsv file to load.\n" +
+      "\n" +
+      "load data from source.tsv. assumes new-line delimited, tab-separated\n" +
+      "records. drops the first line. generates a geohash for the rowkey.\n" +
+      "records are stored in columns in the 'a' familt, columns are:\n" +
+      "  lon,lat,id,name,address,city,url,phone,type,zip\n";
 
   private static final byte[] FAMILY = "a".getBytes();
   private static final String[] COLUMNS = new String[] {
-    "lon", "lat", "id", "name", "address",
-    "city", "url", "phone", "type", "zip"
+      "lon", "lat", "id", "name", "address",
+      "city", "url", "phone", "type", "zip"
   };
   private static final ArrayIterator COLS = new ArrayIterator(COLUMNS);
   private static final Splitter SPLITTER = Splitter.on('\t')
-    .trimResults()
-    .limit(COLUMNS.length);
+      .trimResults()
+      .limit(COLUMNS.length);
 
   public static void main(String[] args) throws IOException {
 
@@ -45,44 +51,58 @@ public class Ingest {
       System.exit(0);
     }
 
-    HTable table = new HTable(args[0]);
-    table.setAutoFlush(false);
+    final TableName tableName = TableName.valueOf(args[0]);
+
+    final Configuration conf = HBaseConfiguration.create();
+
+    HBaseAdmin.available(conf);
+
+    Connection connection = ConnectionFactory.createConnection(conf);
+    Table table = connection.getTable(tableName);
+
+    final Admin admin = connection.getAdmin();
 
     BufferedReader reader = new BufferedReader(new FileReader(args[1]));
     String line = reader.readLine();
     int records = 0;
     long start = System.currentTimeMillis();
 
-    while((line = reader.readLine()) != null) {
-      COLS.reset();
-      Iterator<String> vals = SPLITTER.split(line).iterator();
-      Map<String, String> row
-        = new HashMap<String, String>(COLUMNS.length);
+    try {
+      while ((line = reader.readLine()) != null) {
+        COLS.reset();
+        Iterator<String> vals = SPLITTER.split(line).iterator();
+        Map<String, String> row = new HashMap<String, String>(COLUMNS.length);
 
-      while (vals.hasNext() && COLS.hasNext()) {
-        String col = (String) COLS.next();
-        String val = vals.next();
-        row.put(col, val);
+        while (vals.hasNext() && COLS.hasNext()) {
+          String col = (String) COLS.next();
+          String val = vals.next();
+          row.put(col, val);
+        }
+
+        double lat = Double.parseDouble(row.get("lat"));
+        double lon = Double.parseDouble(row.get("lon"));
+        String rowkey = GeoHash.withCharacterPrecision(lat, lon, 12).toBase32();
+        Put put = new Put(rowkey.getBytes());
+        for (Map.Entry<String, String> e : row.entrySet()) {
+          put.addColumn(FAMILY, e.getKey().getBytes(), e.getValue().getBytes());
+        }
+
+        table.put(put);
+        records++;
       }
 
-      double lat = Double.parseDouble(row.get("lat"));
-      double lon = Double.parseDouble(row.get("lon"));
-      String rowkey = GeoHash.withCharacterPrecision(lat, lon, 12).toBase32();
-      Put put = new Put(rowkey.getBytes());
-      for(Map.Entry<String, String> e : row.entrySet()) {
-        put.add(FAMILY, e.getKey().getBytes(), e.getValue().getBytes());
-      }
-
-      table.put(put);
-      records++;
+      admin.flush(tableName);
+    } finally {
+      table.close();
+      connection.close();
+      reader.close();
+      admin.close();
     }
-    table.flushCommits();
+
     long end = System.currentTimeMillis();
     System.out.println(
-      String.format("Geohashed %s records in %sms.",
-    		        records, end - start));
+        String.format("Geohashed %s records in %sms.",
+            records, end - start));
 
-    reader.close();
-    table.close();
   }
 }

@@ -6,11 +6,16 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
@@ -35,26 +40,38 @@ public class WithinQuery {
   static final byte[] X_COL = "lon".getBytes();
   static final byte[] Y_COL = "lat".getBytes();
 
-  private static final String usage =
-    "WithinQuery local|remote wkt\n" +
-    "  help - print this message and exit.\n" +
-    "  local | remote - run the exclusion filter client-side or in the filter.\n" +
-    "  wkt - the query geometry in Well-Known Text format.";
+  private static final String usage = "WithinQuery local|remote wkt\n" +
+      "  help - print this message and exit.\n" +
+      "  local | remote - run the exclusion filter client-side or in the filter.\n" +
+      "  wkt - the query geometry in Well-Known Text format.";
 
   final GeometryFactory factory = new GeometryFactory();
-  final HTablePool pool;
+  final Connection pool;
 
-  public WithinQuery(HTablePool pool) {
+  public WithinQuery(final Connection pool) {
     this.pool = pool;
   }
 
   Set<Coordinate> getCoords(GeoHash hash) {
     BoundingBox bbox = hash.getBoundingBox();
     Set<Coordinate> coords = new HashSet<Coordinate>(4);
-    coords.add(new Coordinate(bbox.getMinLon(), bbox.getMinLat()));
-    coords.add(new Coordinate(bbox.getMinLon(), bbox.getMaxLat()));
-    coords.add(new Coordinate(bbox.getMaxLon(), bbox.getMaxLat()));
-    coords.add(new Coordinate(bbox.getMaxLon(), bbox.getMinLat()));
+
+    double lon = bbox.getSouthEastCorner().getLongitude();
+    double lat = bbox.getSouthEastCorner().getLatitude();
+    coords.add(new Coordinate(lon, lat));
+
+    lon = bbox.getNorthEastCorner().getLongitude();
+    lat = bbox.getNorthEastCorner().getLatitude();
+    coords.add(new Coordinate(lon, lat));
+
+    lon = bbox.getNorthWestCorner().getLongitude();
+    lat = bbox.getNorthWestCorner().getLatitude();
+    coords.add(new Coordinate(lon, lat));
+    
+    lon = bbox.getSouthWestCorner().getLongitude();
+    lat = bbox.getSouthWestCorner().getLatitude();
+    coords.add(new Coordinate(lon, lat));
+
     return coords;
   }
 
@@ -63,8 +80,7 @@ public class WithinQuery {
     for (GeoHash hash : hashes) {
       coords.addAll(getCoords(hash));
     }
-    Geometry geom
-      = factory.createMultiPoint(coords.toArray(new Coordinate[0]));
+    Geometry geom = factory.createMultiPoint(coords.toArray(new Coordinate[0]));
     return geom.convexHull();
   }
 
@@ -73,14 +89,13 @@ public class WithinQuery {
     Geometry candidateGeom;
     Point queryCenter = query.getCentroid();
     for (int precision = 7; precision > 0; precision--) {
-      candidate
-        = GeoHash.withCharacterPrecision(queryCenter.getY(),
-        		                         queryCenter.getX(),
-        		                         precision);
+      candidate = GeoHash.withCharacterPrecision(queryCenter.getY(),
+          queryCenter.getX(),
+          precision);
 
-      candidateGeom = convexHull(new GeoHash[]{ candidate });
+      candidateGeom = convexHull(new GeoHash[] { candidate });
       if (candidateGeom.contains(query)) {
-        return new GeoHash[]{ candidate };
+        return new GeoHash[] { candidate };
       }
 
       candidateGeom = convexHull(candidate.getAdjacent());
@@ -91,20 +106,20 @@ public class WithinQuery {
       }
     }
     throw new IllegalArgumentException(
-      "Geometry cannot be contained by GeoHashs");
+        "Geometry cannot be contained by GeoHashs");
   }
 
   public Set<QueryMatch> query(Geometry query) throws IOException {
     GeoHash[] prefixes = minimumBoundingPrefixes(query);
     Set<QueryMatch> ret = new HashSet<QueryMatch>();
-    HTableInterface table = pool.getTable(TABLE);
+    Table table = pool.getTable(TableName.valueOf(TABLE));
 
     for (GeoHash prefix : prefixes) {
       byte[] p = prefix.toBase32().getBytes();
-      Scan scan = new Scan(p);
+      Scan scan = new Scan().withStartRow(p);
       scan.setFilter(new PrefixFilter(p));
       scan.addFamily(FAMILY);
-      scan.setMaxVersions(1);
+      scan.readVersions(1);
       scan.setCaching(50);
 
       ResultScanner scanner = table.getScanner(scan);
@@ -114,8 +129,8 @@ public class WithinQuery {
         String lon = new String(r.getValue(FAMILY, X_COL));
         String lat = new String(r.getValue(FAMILY, Y_COL));
         ret.add(new QueryMatch(id, hash,
-                               Double.parseDouble(lon),
-                               Double.parseDouble(lat)));
+            Double.parseDouble(lon),
+            Double.parseDouble(lat)));
       }
     }
 
@@ -139,14 +154,15 @@ public class WithinQuery {
     GeoHash[] prefixes = minimumBoundingPrefixes(query);
     Filter withinFilter = new WithinFilter(query);
     Set<QueryMatch> ret = new HashSet<QueryMatch>();
-    HTableInterface table = pool.getTable(TABLE);
+    Table table = pool.getTable(TableName.valueOf(TABLE));
 
     for (GeoHash prefix : prefixes) {
       byte[] p = prefix.toBase32().getBytes();
       Filter filters = new FilterList(new PrefixFilter(p), withinFilter);
-      Scan scan = new Scan(p, filters);
+      Scan scan = new Scan().withStartRow(p);
+      scan.setFilter(filters);
       scan.addFamily(FAMILY);
-      scan.setMaxVersions(1);
+      scan.readVersions(1);
       scan.setCaching(50);
 
       ResultScanner scanner = table.getScanner(scan);
@@ -156,8 +172,8 @@ public class WithinQuery {
         String lon = new String(r.getValue(FAMILY, X_COL));
         String lat = new String(r.getValue(FAMILY, Y_COL));
         ret.add(new QueryMatch(id, hash,
-                               Double.parseDouble(lon),
-                               Double.parseDouble(lat)));
+            Double.parseDouble(lon),
+            Double.parseDouble(lat)));
       }
     }
 
@@ -166,7 +182,7 @@ public class WithinQuery {
   }
 
   public static void main(String[] args)
-    throws IOException, ParseException {
+      throws IOException, ParseException {
 
     if (args.length != 2 || (!"local".equals(args[0]) && !"remote".equals(args[0]))) {
       System.out.println(usage);
@@ -176,20 +192,27 @@ public class WithinQuery {
     WKTReader reader = new WKTReader();
     Geometry query = reader.read(args[1]);
 
-    HTablePool pool = new HTablePool();
-    WithinQuery q = new WithinQuery(pool);
-    Set<QueryMatch> results;
-    if ("local".equals(args[0])) {
-      results = q.query(query);
-    } else {
-      results = q.queryWithFilter(query);
-    }
+    final Configuration conf = HBaseConfiguration.create();
 
-    System.out.println("Query matched " + results.size() + " points.");
-    for (QueryMatch result : results) {
-      System.out.println(result);
-    }
+    HBaseAdmin.available(conf);
 
-    pool.close();
+    Connection connection = ConnectionFactory.createConnection(conf);
+    try {
+
+      WithinQuery q = new WithinQuery(connection);
+      Set<QueryMatch> results;
+      if ("local".equals(args[0])) {
+        results = q.query(query);
+      } else {
+        results = q.queryWithFilter(query);
+      }
+
+      System.out.println("Query matched " + results.size() + " points.");
+      for (QueryMatch result : results) {
+        System.out.println(result);
+      }
+    } finally {
+      connection.close();
+    }
   }
 }
