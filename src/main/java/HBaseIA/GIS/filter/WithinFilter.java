@@ -1,13 +1,13 @@
 package HBaseIA.GIS.filter;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterBase;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -17,6 +17,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKTReader;
 
+ 
 public class WithinFilter extends FilterBase {
 
   static final byte[] TABLE = "wifi".getBytes();
@@ -27,21 +28,24 @@ public class WithinFilter extends FilterBase {
 
   static final Log LOG = LogFactory.getLog(WithinFilter.class);
 
-  final GeometryFactory factory = new GeometryFactory();
+  static final GeometryFactory factory = new GeometryFactory();
   Geometry query = null;
   boolean exclude = false;
 
-  public WithinFilter() {}
+  public WithinFilter() {
+  }
 
   public WithinFilter(Geometry query) {
     this.query = query;
   }
 
   @Override
-  public boolean hasFilterRow() { return true; }
+  public boolean hasFilterRow() {
+    return true;
+  }
 
   @Override
-  public void filterRow(List<KeyValue> kvs) {
+  public void filterRowCells(List<Cell> kvs) {
     double lon = Double.NaN;
     double lat = Double.NaN;
 
@@ -51,16 +55,18 @@ public class WithinFilter extends FilterBase {
       return;
     }
 
-    for (KeyValue kv : kvs) {
-      byte[] qual = kv.getQualifier();
+    for (Cell kv : kvs) {
+      byte[] qual = kv.getQualifierArray();
       if (Bytes.equals(qual, X_COL))
-        lon = Double.parseDouble(new String(kv.getValue()));
+        lon = Double.parseDouble(new String(kv.getValueArray()));
       if (Bytes.equals(qual, Y_COL))
-        lat = Double.parseDouble(new String(kv.getValue()));
+        lat = Double.parseDouble(new String(kv.getValueArray()));
     }
 
     if (Double.isNaN(lat) || Double.isNaN(lon)) {
-      LOG.debug(kvs.get(0).getKeyString() + " is not a point.");
+      // TODO: how to get the key from a Cell ???
+      // LOG.debug(kvs.get(0).getKeyString() + " is not a point.");
+      LOG.debug("is not a point.");
       this.exclude = true;
       return;
     }
@@ -84,19 +90,23 @@ public class WithinFilter extends FilterBase {
     this.exclude = false;
   }
 
+  /** TODO: serialize fiter */
+  /* 
   @Override
-  public void write(DataOutput out) throws IOException {
+  public byte[] toByteArray() {
+    Built-in HBase filters use Protobuf for serialization.
+    This is probably required since there is no API for deserialization.
     out.writeUTF(query.toText());
   }
+  */
 
-  @Override
-  public void readFields(DataInput in) throws IOException {
-    String wkt = in.readUTF();
+  public static Filter createFilterFromArguments(ArrayList<byte[]> filterArguments) {
+    String wkt = new String(filterArguments.get(0), StandardCharsets.UTF_8);
     WKTReader reader = new WKTReader(factory);
     try {
-      this.query = reader.read(wkt);
-	} catch (ParseException e) {
-      throw new IOException(e);
-	}
-  }  
+      return new WithinFilter(reader.read(wkt));
+    } catch (ParseException e) {
+      throw new RuntimeException(e);
+    }
+  }
 }
