@@ -44,7 +44,7 @@ issue these commands:
 
     $ echo "create 'wifi', 'a'" | hbase shell
     $ java -cp target/hbaseia-gis-1.0.0.jar \
-      HBaseIA.GeoTool.Ingest wifi data/wifi_4326.txt
+      HBaseIA.GIS.Ingest wifi data/wifi_4326.txt
 
 Once your data is loaded, two queries have been implemented. The first
 one is k-nearest neighbors. This query is implemented entirely
@@ -54,7 +54,7 @@ client-side and can be run immediately.
       HBaseIA.GIS.KNNQuery -73.97000655 40.76098703 5
 
 The second query is for all points within a query polygon. There are
-two implementations, a local and remove version. The local version is
+two implementations, a local and remote version. The local version is
 implemented entirely client-side and can be run like the `KNNQuery`.
 
     $ java -cp target/hbaseia-gis-1.0.0.jar \
