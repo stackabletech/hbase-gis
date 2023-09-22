@@ -92,17 +92,11 @@ spec:
         replicas: 1
         podOverrides:
           spec:
-            volumes:
-              - name: gis
-                emptyDir: {}
             containers:
               - name: hbase
                 env:
                   - name: HBASE_CLASSPATH
-                    value: /stackable/gis
-                volumeMounts:
-                  - mountPath: /stackable/gis
-                    name: gis
+                    value: "/gis/*.jar:/stackable/hbase/lib/*.jar"
   regionServers:
     config:
       logging:
@@ -114,6 +108,13 @@ spec:
             phoenix.log.saltBuckets: "2"
             hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
         replicas: 1
+        podOverrides:
+          spec:
+            containers:
+              - name: hbase
+                env:
+                  - name: HBASE_CLASSPATH
+                    value: "/gis/*.jar:/stackable/hbase/lib/*.jar"
   restServers:
     config:
       logging:
@@ -125,3 +126,10 @@ spec:
             phoenix.log.saltBuckets: "2"
             hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
         replicas: 1
+        podOverrides:
+          spec:
+            containers:
+              - name: hbase
+                env:
+                  - name: HBASE_CLASSPATH
+                    value: "/gis/*.jar:/stackable/hbase/lib/*.jar"
