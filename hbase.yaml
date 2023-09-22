@@ -1,0 +1,127 @@
+# 1. start kind
+# 2. install operators
+#   kubectl create ns stackable-operators && stackablectl -n stackable-operators op in commons secret zookeeper hdfs hbase
+# 3. build and upload hbase image
+#   docker build -t docker.stackable.tech/hbase:2.4.12-gis .
+#   kind load docker-image docker.stackable.tech/hbase:2.4.12-gis
+# 4. create an hbase cluster
+#   kubectl create ns gis && kubectl apply -n gis -f hbase.yaml
+---
+apiVersion: zookeeper.stackable.tech/v1alpha1
+kind: ZookeeperCluster
+metadata:
+  name: zookeeper
+spec:
+  image:
+    productVersion: "3.8.0"
+    pullPolicy: IfNotPresent
+  clusterConfig:
+    listenerClass: external-unstable
+  servers:
+    config:
+      logging:
+        enableVectorAgent: False
+    roleGroups:
+      default:
+        replicas: 1
+---
+apiVersion: zookeeper.stackable.tech/v1alpha1
+kind: ZookeeperZnode
+metadata:
+  name: znode
+spec:
+  clusterRef:
+    name: zookeeper
+---
+apiVersion: hdfs.stackable.tech/v1alpha1
+kind: HdfsCluster
+metadata:
+  name: hdfs
+spec:
+  image:
+    productVersion: "3.3.3"
+    pullPolicy: IfNotPresent
+  clusterConfig:
+    zookeeperConfigMapName: znode
+    listenerClass: external-unstable
+  nameNodes:
+    config:
+      logging:
+        enableVectorAgent: False
+    roleGroups:
+      default:
+        replicas: 2
+  dataNodes:
+    config:
+      logging:
+        enableVectorAgent: False
+    roleGroups:
+      default:
+        replicas: 1
+  journalNodes:
+    config:
+      logging:
+        enableVectorAgent: False
+    roleGroups:
+      default:
+        replicas: 1
+---
+apiVersion: hbase.stackable.tech/v1alpha1
+kind: HbaseCluster
+metadata:
+  name: hbase
+spec:
+  image:
+    custom: docker.stackable.tech/hbase:2.4.12-gis
+    productVersion: "2.4.12"
+    pullPolicy: Never
+  clusterConfig:
+    hdfsConfigMapName: hdfs
+    zookeeperConfigMapName: znode
+    listenerClass: external-unstable
+  masters:
+    config:
+      logging:
+        enableVectorAgent: False
+    roleGroups:
+      default:
+        configOverrides:
+          hbase-site.xml:
+            phoenix.log.saltBuckets: "2"
+            hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
+        replicas: 1
+        podOverrides:
+          spec:
+            volumes:
+              - name: gis
+                emptyDir: {}
+            containers:
+              - name: hbase
+                env:
+                  - name: HBASE_CLASSPATH
+                    value: /stackable/gis
+                volumeMounts:
+                  - mountPath: /stackable/gis
+                    name: gis
+  regionServers:
+    config:
+      logging:
+        enableVectorAgent: False
+    roleGroups:
+      default:
+        configOverrides:
+          hbase-site.xml:
+            phoenix.log.saltBuckets: "2"
+            hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
+        replicas: 1
+  restServers:
+    config:
+      logging:
+        enableVectorAgent: False
+    roleGroups:
+      default:
+        configOverrides:
+          hbase-site.xml:
+            phoenix.log.saltBuckets: "2"
+            hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
+        replicas: 1
