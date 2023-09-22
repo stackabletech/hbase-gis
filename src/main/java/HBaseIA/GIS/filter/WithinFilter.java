@@ -7,6 +7,7 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterBase;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -31,9 +32,6 @@ public class WithinFilter extends FilterBase {
   static final GeometryFactory factory = new GeometryFactory();
   Geometry query = null;
   boolean exclude = false;
-
-  public WithinFilter() {
-  }
 
   public WithinFilter(Geometry query) {
     this.query = query;
@@ -90,7 +88,7 @@ public class WithinFilter extends FilterBase {
     this.exclude = false;
   }
 
-  /** TODO: serialize fiter */
+  /** TODO: serialize filter */
   /* 
   @Override
   public byte[] toByteArray() {
@@ -100,6 +98,17 @@ public class WithinFilter extends FilterBase {
   }
   */
 
+  public static Filter parseFrom(final byte[] pbBytes) throws DeserializationException {
+    String wkt = new String(pbBytes, StandardCharsets.UTF_8);
+    WKTReader reader = new WKTReader(factory);
+    try {
+      return new WithinFilter(reader.read(wkt));
+    } catch (ParseException e) {
+      throw new DeserializationException(e);
+    }
+  }
+
+  /*
   public static Filter createFilterFromArguments(ArrayList<byte[]> filterArguments) {
     String wkt = new String(filterArguments.get(0), StandardCharsets.UTF_8);
     WKTReader reader = new WKTReader(factory);
@@ -109,4 +118,5 @@ public class WithinFilter extends FilterBase {
       throw new RuntimeException(e);
     }
   }
+   */
 }

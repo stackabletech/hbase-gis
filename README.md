@@ -84,6 +84,7 @@ Now you can run the query:
                  -73.990839 40.756400, \
                  -73.984422 40.753642, \
                  -73.980844 40.758703))"
+    java -cp '/tmp/hbase-stackable/local/jars/hbaseia-gis-1.0.0.jar:/stackable/conf' HBaseIA.GIS.WithinQuery remote "POLYGON ((-73.980844 40.758703, -73.987214 40.761369, -73.990839 40.756400, -73.984422 40.753642, -73.980844 40.758703))"
 
 ## License
 

@@ -89,14 +89,17 @@ spec:
           hbase-site.xml:
             phoenix.log.saltBuckets: "2"
             hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
+            #hbase.dynamic.jars.dir: /gis
         replicas: 1
-        podOverrides:
-          spec:
-            containers:
-              - name: hbase
-                env:
-                  - name: HBASE_CLASSPATH
-                    value: "/gis/*.jar:/stackable/hbase/lib/*.jar"
+        #envOverrides:
+        #  HBASE_CLASSPATH: "/gis/*.jar:/stackable/hbase/lib/*.jar"
+        #podOverrides:
+        #  spec:
+        #    containers:
+        #      - name: hbase
+        #        env:
+        #          - name: HBASE_CLASSPATH
+        #            value: "/gis/*.jar:/stackable/hbase/lib/*.jar"
   regionServers:
     config:
       logging:
@@ -107,14 +110,17 @@ spec:
           hbase-site.xml:
             phoenix.log.saltBuckets: "2"
             hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
+            #hbase.dynamic.jars.dir: /gis
         replicas: 1
-        podOverrides:
-          spec:
-            containers:
-              - name: hbase
-                env:
-                  - name: HBASE_CLASSPATH
-                    value: "/gis/*.jar:/stackable/hbase/lib/*.jar"
+        #envOverrides:
+        #  HBASE_CLASSPATH: "/gis/*.jar:/stackable/hbase/lib/*.jar"
+        #podOverrides:
+        #  spec:
+        #    containers:
+        #      - name: hbase
+        #        env:
+        #          - name: HBASE_CLASSPATH
+        #            value: "/gis/*.jar:/stackable/hbase/lib/*.jar"
   restServers:
     config:
       logging:
@@ -125,11 +131,14 @@ spec:
           hbase-site.xml:
             phoenix.log.saltBuckets: "2"
             hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
+            #hbase.dynamic.jars.dir: /gis
         replicas: 1
-        podOverrides:
-          spec:
-            containers:
-              - name: hbase
-                env:
-                  - name: HBASE_CLASSPATH
-                    value: "/gis/*.jar:/stackable/hbase/lib/*.jar"
+        #envOverrides:
+        #  HBASE_CLASSPATH: "/gis/*.jar:/stackable/hbase/lib/*.jar"
+        #podOverrides:
+        #  spec:
+        #    containers:
+        #      - name: hbase
+        #        env:
+        #          - name: HBASE_CLASSPATH
+        #            value: "/gis/*.jar:/stackable/hbase/lib/*.jar"
