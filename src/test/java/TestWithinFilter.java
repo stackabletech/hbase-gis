@@ -15,9 +15,7 @@ import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.Region;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,7 +100,7 @@ public class TestWithinFilter {
     }
 
     @Test
-    public void testFilter() throws Exception {
+    public void testScanAll() throws Exception {
         WKTReader reader = new WKTReader();
 
         String polygon = "POLYGON ((-73.980844 40.758703, " +
@@ -112,14 +110,44 @@ public class TestWithinFilter {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-        int results = queryWithFilterAndRegionScanner(query, this.region);
+        int results = queryWithFilterAndRegionScanner(query, this.region, new FilterList());
+        assertEquals(1224, results);
+    }
+
+    @Test
+    public void testScanWithFilter() throws Exception {
+        WKTReader reader = new WKTReader();
+
+        String polygon = "POLYGON ((-73.980844 40.758703, " +
+                "-73.987214 40.761369, " +
+                "-73.990839 40.756400, " +
+                "-73.984422 40.753642, " +
+                "-73.980844 40.758703))";
+
+        Geometry query = reader.read(polygon);
+        Filter withinFilter = new WithinFilter(query);
+        Filter filters = new FilterList(withinFilter);
+        int results = queryWithFilterAndRegionScanner(query, this.region, filters);
         assertEquals(26, results);
     }
 
-    private int queryWithFilterAndRegionScanner(Geometry query, Region region) throws IOException {
+    @Test
+    public void testRectangleScanWithFilter() throws Exception {
+        WKTReader reader = new WKTReader();
+
+        String polygon = "POLYGON ((-73.980844 40.758703, " +
+                "-73.987214 40.761369, " +
+                "-73.984422 40.753642, " +
+                "-73.980844 40.758703))";
+
+        Geometry query = reader.read(polygon);
         Filter withinFilter = new WithinFilter(query);
         Filter filters = new FilterList(withinFilter);
+        int results = queryWithFilterAndRegionScanner(query, this.region, filters);
+        assertEquals(10, results);
+    }
 
+    private int queryWithFilterAndRegionScanner(Geometry query, Region region, Filter filters) throws IOException {
         Scan scan = new Scan();
         scan.setFilter(filters);
         scan.addFamily(FAMILY);
@@ -149,7 +177,7 @@ public class TestWithinFilter {
                     sb.append(":");
                     sb.append(Bytes.toString(CellUtil.cloneValue(cell)));
                 }
-                System.out.println(sb);
+                LOG.info(sb.toString());
             } else {
                 break;
             }
