@@ -1,122 +1,148 @@
 package HBaseIA.GIS.filter;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.exceptions.DeserializationException;
-import org.apache.hadoop.hbase.filter.Filter;
-import org.apache.hadoop.hbase.filter.FilterBase;
-import org.apache.hadoop.hbase.util.Bytes;
-
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKTReader;
+import com.vividsolutions.jts.io.WKTWriter;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.ByteBufferExtendedCell;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.exceptions.DeserializationException;
+import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.filter.FilterBase;
+import org.apache.hadoop.hbase.util.Bytes;
 
- 
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+
 public class WithinFilter extends FilterBase {
 
-  static final byte[] TABLE = "wifi".getBytes();
-  static final byte[] FAMILY = "a".getBytes();
-  static final byte[] ID = "id".getBytes();
-  static final byte[] X_COL = "lon".getBytes();
-  static final byte[] Y_COL = "lat".getBytes();
+    static final byte[] TABLE = "wifi".getBytes();
+    static final byte[] FAMILY = "a".getBytes();
+    static final byte[] ID = "id".getBytes();
+    static final byte[] X_COL = "lon".getBytes();
+    static final byte[] Y_COL = "lat".getBytes();
 
-  static final Log LOG = LogFactory.getLog(WithinFilter.class);
+    static final Log LOG = LogFactory.getLog(WithinFilter.class);
 
-  static final GeometryFactory factory = new GeometryFactory();
-  Geometry query = null;
-  boolean exclude = false;
+    static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
+    protected Geometry query = null;
+    protected boolean exclude = false;
 
-  public WithinFilter(Geometry query) {
-    this.query = query;
-  }
-
-  @Override
-  public boolean hasFilterRow() {
-    return true;
-  }
-
-  @Override
-  public void filterRowCells(List<Cell> kvs) {
-    double lon = Double.NaN;
-    double lat = Double.NaN;
-
-    if (null == kvs || 0 == kvs.size()) {
-      LOG.debug("skipping empty row.");
-      this.exclude = true;
-      return;
+    public WithinFilter(final Geometry query) {
+        this.query = query;
     }
 
-    for (Cell kv : kvs) {
-      byte[] qual = kv.getQualifierArray();
-      if (Bytes.equals(qual, X_COL))
-        lon = Double.parseDouble(new String(kv.getValueArray()));
-      if (Bytes.equals(qual, Y_COL))
-        lat = Double.parseDouble(new String(kv.getValueArray()));
+    @Override
+    public boolean hasFilterRow() {
+        return true;
     }
 
-    if (Double.isNaN(lat) || Double.isNaN(lon)) {
-      // TODO: how to get the key from a Cell ???
-      // LOG.debug(kvs.get(0).getKeyString() + " is not a point.");
-      LOG.debug("is not a point.");
-      this.exclude = true;
-      return;
+    @Override
+    public void filterRowCells(List<Cell> kvs) {
+        double lon = Double.NaN;
+        double lat = Double.NaN;
+
+        if (null == kvs || 0 == kvs.size()) {
+            LOG.debug("skipping empty row.");
+            this.exclude = true;
+            return;
+        }
+
+        for (Cell cell : kvs) {
+            if (CellUtil.matchingColumn(cell, FAMILY, X_COL))
+                lon = parseCoordinate(cell);
+            if (CellUtil.matchingColumn(cell, FAMILY, Y_COL))
+                lat = parseCoordinate(cell);
+        }
+
+        if (Double.isNaN(lat) || Double.isNaN(lon)) {
+            LOG.debug("Row is not a point.");
+            this.exclude = true;
+            return;
+        }
+
+        Coordinate coord = new Coordinate(lon, lat);
+        Geometry point = GEOMETRY_FACTORY.createPoint(coord);
+        this.exclude = !query.contains(point);
+        if (LOG.isDebugEnabled())
+            LOG.debug(String.format("row key=%s, lat=%f, lon=%f, filter applied=%s", rowKey(kvs.get(0)),
+                    lat, lon,
+                    (this.exclude ? "rejecting" : "keeping")));
     }
 
-    Coordinate coord = new Coordinate(lon, lat);
-    Geometry point = factory.createPoint(coord);
-    if (!query.contains(point)) {
-      this.exclude = true;
+    @Override
+    public boolean filterRow() {
+        return this.exclude;
     }
-  }
 
-  @Override
-  public boolean filterRow() {
-    if (LOG.isDebugEnabled())
-      LOG.debug("filter applied. " + (this.exclude ? "rejecting" : "keeping"));
-    return this.exclude;
-  }
-
-  @Override
-  public void reset() {
-    this.exclude = false;
-  }
-
-  /** TODO: serialize filter */
-  /* 
-  @Override
-  public byte[] toByteArray() {
-    Built-in HBase filters use Protobuf for serialization.
-    This is probably required since there is no API for deserialization.
-    out.writeUTF(query.toText());
-  }
-  */
-
-  public static Filter parseFrom(final byte[] pbBytes) throws DeserializationException {
-    String wkt = new String(pbBytes, StandardCharsets.UTF_8);
-    WKTReader reader = new WKTReader(factory);
-    try {
-      return new WithinFilter(reader.read(wkt));
-    } catch (ParseException e) {
-      throw new DeserializationException(e);
+    @Override
+    public void reset() {
+        this.exclude = false;
     }
-  }
 
-  /*
-  public static Filter createFilterFromArguments(ArrayList<byte[]> filterArguments) {
-    String wkt = new String(filterArguments.get(0), StandardCharsets.UTF_8);
-    WKTReader reader = new WKTReader(factory);
-    try {
-      return new WithinFilter(reader.read(wkt));
-    } catch (ParseException e) {
-      throw new RuntimeException(e);
+    /**
+     * Called by the region server when instantiating a new object.
+     *
+     * @param queryBytes A byte array as produced by {@link WithinFilter#toByteArray() toByteArray}
+     * @return A new instance with the given query.
+     * @throws DeserializationException
+     */
+    public static Filter parseFrom(final byte[] queryBytes) throws DeserializationException {
+        String query = new String(queryBytes, StandardCharsets.UTF_8);
+        WKTReader reader = new WKTReader(GEOMETRY_FACTORY);
+        try {
+            return new WithinFilter(reader.read(query));
+        } catch (ParseException e) {
+            throw new DeserializationException(e);
+        }
     }
-  }
-   */
+
+    /**
+     * Called by the client when performing a filtered scan.
+     *
+     * @return A serialized query as expected by {@link WithinFilter#parseFrom(byte[]) parseFrom}
+     */
+    @Override
+    public byte[] toByteArray() {
+        final WKTWriter writer = new WKTWriter(2);
+        return writer.write(this.query).getBytes(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Parse a coordinate cell's value from it's String representation to a Double.
+     * It's the caller's responsibility to provide the correct cell.
+     *
+     * @param cell A coordinate cell.
+     * @return A coordinate value or Double.NaN in case if an error.
+     */
+    final Double parseCoordinate(final Cell cell) {
+        byte[] value = null;
+        int offset = 0;
+        int len = 0;
+        if (cell instanceof ByteBufferExtendedCell) {
+            value = ((ByteBufferExtendedCell) cell).getValueByteBuffer().array();
+            offset = ((ByteBufferExtendedCell) cell).getValuePosition();
+            len = cell.getValueLength();
+        } else {
+            value = cell.getValueArray();
+            offset = cell.getValueOffset();
+            len = cell.getValueLength();
+        }
+        try {
+            return Double.parseDouble(Bytes.toString(value, offset, len));
+        } catch (NumberFormatException nfe) {
+            LOG.error(String.format("Failed to parse coordinate for key " + CellUtil.getCellKeyAsString(cell)));
+        }
+        return Double.NaN;
+    }
+
+    final String rowKey(final Cell c) {
+        return Bytes.toString(c.getRowArray(), c.getRowOffset(), c.getRowLength());
+    }
 }
