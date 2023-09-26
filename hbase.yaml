@@ -66,6 +66,21 @@ spec:
       default:
         replicas: 1
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: region-server-log-config
+data:
+  log4j.properties: |
+    #Define console appender
+    log4j.appender.console=org.apache.log4j.ConsoleAppender
+    log4j.appender.console.Target=System.out
+    log4j.appender.console.layout=org.apache.log4j.PatternLayout
+    log4j.appender.console.layout.ConversionPattern=%-5p %c{1} - %m%n 
+    log4j.rootLogger=INFO, console
+    log4j.logger.HBaseIA.GIS.filter=DEBUG
+    log4j.logger.org.apache.hadoop.hbase.filter=DEBUG;
+---
 apiVersion: hbase.stackable.tech/v1alpha1
 kind: HbaseCluster
 metadata:
@@ -103,24 +118,19 @@ spec:
   regionServers:
     config:
       logging:
-        enableVectorAgent: False
+        enableVectorAgent: false
+        containers:
+          hbase:
+            custom:
+              configMap: region-server-log-config
     roleGroups:
       default:
         configOverrides:
           hbase-site.xml:
             phoenix.log.saltBuckets: "2"
             hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
-            #hbase.dynamic.jars.dir: /gis
+            #hbase.dynamic.jars.dir: /gis # needs to be in hdfs
         replicas: 1
-        #envOverrides:
-        #  HBASE_CLASSPATH: "/gis/*.jar:/stackable/hbase/lib/*.jar"
-        #podOverrides:
-        #  spec:
-        #    containers:
-        #      - name: hbase
-        #        env:
-        #          - name: HBASE_CLASSPATH
-        #            value: "/gis/*.jar:/stackable/hbase/lib/*.jar"
   restServers:
     config:
       logging:

@@ -88,16 +88,6 @@ public class WithinFilter extends FilterBase {
     this.exclude = false;
   }
 
-  /** TODO: serialize filter */
-  /* 
-  @Override
-  public byte[] toByteArray() {
-    Built-in HBase filters use Protobuf for serialization.
-    This is probably required since there is no API for deserialization.
-    out.writeUTF(query.toText());
-  }
-  */
-
   public static Filter parseFrom(final byte[] pbBytes) throws DeserializationException {
     String wkt = new String(pbBytes, StandardCharsets.UTF_8);
     WKTReader reader = new WKTReader(factory);
@@ -107,16 +97,4 @@ public class WithinFilter extends FilterBase {
       throw new DeserializationException(e);
     }
   }
-
-  /*
-  public static Filter createFilterFromArguments(ArrayList<byte[]> filterArguments) {
-    String wkt = new String(filterArguments.get(0), StandardCharsets.UTF_8);
-    WKTReader reader = new WKTReader(factory);
-    try {
-      return new WithinFilter(reader.read(wkt));
-    } catch (ParseException e) {
-      throw new RuntimeException(e);
-    }
-  }
-   */
 }
