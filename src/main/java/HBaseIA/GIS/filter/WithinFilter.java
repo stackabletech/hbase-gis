@@ -87,8 +87,15 @@ public class WithinFilter extends FilterBase {
         this.exclude = false;
     }
 
-    public static Filter parseFrom(final byte[] pbBytes) throws DeserializationException {
-        String query = new String(pbBytes, StandardCharsets.UTF_8);
+    /**
+     * Called by the region server when instantiating a new object.
+     *
+     * @param queryBytes A byte array as produced by {@link WithinFilter#toByteArray() toByteArray}
+     * @return A new instance with the given query.
+     * @throws DeserializationException
+     */
+    public static Filter parseFrom(final byte[] queryBytes) throws DeserializationException {
+        String query = new String(queryBytes, StandardCharsets.UTF_8);
         LOG.debug(String.format("parseFrom(%s)", query));
         WKTReader reader = new WKTReader(GEOMETRY_FACTORY);
         try {
@@ -99,7 +106,9 @@ public class WithinFilter extends FilterBase {
     }
 
     /**
-     * Returns The serialized filter
+     * Called by the client when performing a filtered scan.
+     *
+     * @return A serialized query as expected by {@link WithinFilter#parseFrom(byte[]) parseFrom}
      */
     @Override
     public byte[] toByteArray() {
@@ -107,6 +116,13 @@ public class WithinFilter extends FilterBase {
         return writer.write(this.query).getBytes(StandardCharsets.UTF_8);
     }
 
+    /**
+     * Parse a coordinate cell's value from it's String representation to a Double.
+     * It's the caller's responsibility to provide the correct cell.
+     *
+     * @param cell A coordinate cell.
+     * @return A coordinate value or Double.NaN in case if an error.
+     */
     final Double parseCoordinate(final Cell cell) {
         byte[] value = null;
         int offset = 0;
