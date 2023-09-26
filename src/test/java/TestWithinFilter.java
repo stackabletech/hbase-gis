@@ -2,6 +2,8 @@ import HBaseIA.GIS.filter.WithinFilter;
 import HBaseIA.GIS.model.QueryMatch;
 import ch.hsr.geohash.GeoHash;
 import com.google.common.base.Splitter;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.WKTReader;
 import org.apache.commons.collections.iterators.ArrayIterator;
@@ -27,6 +29,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 
+import static org.junit.Assert.assertEquals;
+
 public class TestWithinFilter {
     private final static Logger LOG = LoggerFactory.getLogger(TestFilter.class);
     private HRegion region;
@@ -44,24 +48,6 @@ public class TestWithinFilter {
     private static final byte[] ID = "id".getBytes();
     private static final byte[] X_COL = "lon".getBytes();
     private static final byte[] Y_COL = "lat".getBytes();
-
-//    @BeforeClass
-//    public static void setUpBeforeClass() throws Exception {
-//        StartMiniClusterOption option = StartMiniClusterOption.builder().numMasters(1)
-//                .numRegionServers(0).numDataNodes(1).numZkServers(1).createRootDir(true).build();
-//
-//        TEST_UTIL.getConfiguration().addResource("hbase-site-local.xml");
-//        TEST_UTIL.getConfiguration().reloadConfiguration();
-//        //TEST_UTIL.getConfiguration().set();
-//
-//        TEST_UTIL.startMiniCluster(option);
-//        //TEST_UTIL.startMiniCluster(1);
-//    }
-//
-//    @AfterClass
-//    public static void tearDownAfterClass() throws Exception {
-//        TEST_UTIL.shutdownMiniCluster();
-//    }
 
     @Before
     public void setup() throws Exception {
@@ -110,7 +96,7 @@ public class TestWithinFilter {
         this.region.flush(true);
 
         long end = System.currentTimeMillis();
-        System.out.println(String.format("Geohashed %s records in %sms.", records, end - start));
+        LOG.info(String.format("Geohashed %s records in %sms.", records, end - start));
     }
 
     @After
@@ -129,31 +115,16 @@ public class TestWithinFilter {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-
-//        WithinQuery q = new WithinQuery(ConnectionFactory.createConnection(TEST_UTIL.getConfiguration()));
-
-        Set<QueryMatch> results = queryWithFilterAndRegionScanner(query, this.region);
-
-//        if ("local".equals(mode)) {
-//            results = q.query(query);
-//        } else {
-//            results = q.queryWithFilter(query);
-//        }
-//
-//        System.out.println("Query matched " + results.size() + " points.");
-//        for (QueryMatch result : results) {
-//            System.out.println(result);
-//        }
-
+        int results = queryWithFilterAndRegionScanner(query, this.region);
+        assertEquals(26, results);
     }
 
-    private Set<QueryMatch> queryWithFilterAndRegionScanner(Geometry query, Region region) throws IOException {
+    private int queryWithFilterAndRegionScanner(Geometry query, Region region) throws IOException {
         Filter withinFilter = new WithinFilter(query);
-        Set<QueryMatch> ret = new HashSet<QueryMatch>();
-
         Filter filters = new FilterList(withinFilter);
+
         Scan scan = new Scan();
-        //scan.setFilter(filters);
+        scan.setFilter(filters);
         scan.addFamily(FAMILY);
         scan.readVersions(1);
         scan.setCaching(50);
@@ -161,27 +132,34 @@ public class TestWithinFilter {
         scan.addColumn(FAMILY, X_COL);
         scan.addColumn(FAMILY, Y_COL);
 
-        List<Cell> results = new ArrayList<>();
         InternalScanner scanner = region.getScanner(scan);
-        scanner.next(results);
+        int i = 0;
 
-        Arrays.sort(results.toArray(new Cell[results.size()]), CellComparator.getInstance());
+        while (true) {
+            StringBuilder sb = new StringBuilder();
+            List<Cell> results = new ArrayList<>();
+            scanner.next(results);
 
-        for (Cell cell : results) {
-            System.out.println("Matching: " + Bytes.toString(cell.getRowArray()) + "/" + Bytes.toString(cell.getQualifierArray()));
+            Arrays.sort(results.toArray(new Cell[results.size()]), CellComparator.getInstance());
+
+            if (!results.isEmpty()) {
+                i++;
+                sb.append("Row:");
+
+                for (Cell cell : results) {
+                    sb.append(" ");
+                    sb.append(Bytes.toString(CellUtil.cloneQualifier(cell)));
+                    sb.append(":");
+                    sb.append(Bytes.toString(CellUtil.cloneValue(cell)));
+                }
+                System.out.println(sb);
+            } else {
+                break;
+            }
+
         }
 
-//      ResultScanner scanner = table.getScanner(scan);
-//      for (Result r : scanner) {
-//        String hash = new String(r.getRow());
-//        String id = new String(r.getValue(FAMILY, ID));
-//        String lon = new String(r.getValue(FAMILY, X_COL));
-//        String lat = new String(r.getValue(FAMILY, Y_COL));
-//        ret.add(new QueryMatch(id, hash,
-//                Double.parseDouble(lon),
-//                Double.parseDouble(lat)));
-//      }
-
-        return ret;
+        System.out.println("Rows found: " + i);
+        return i;
     }
 }
