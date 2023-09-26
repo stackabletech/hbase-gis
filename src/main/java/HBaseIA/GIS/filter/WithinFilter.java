@@ -69,16 +69,15 @@ public class WithinFilter extends FilterBase {
 
         Coordinate coord = new Coordinate(lon, lat);
         Geometry point = GEOMETRY_FACTORY.createPoint(coord);
-        //LOG.debug(String.format("query=%s, point=[%f, %f]", query.toString(), lat, lon));
-        if (!query.contains(point)) {
-            this.exclude = true;
-        }
+        this.exclude = !query.contains(point);
+        if (LOG.isDebugEnabled())
+            LOG.debug(String.format("row key=%s, lat=%f, lon=%f, filter applied=%s", rowKey(kvs.get(0)),
+                    lat, lon,
+                    (this.exclude ? "rejecting" : "keeping")));
     }
 
     @Override
     public boolean filterRow() {
-        if (LOG.isDebugEnabled())
-            LOG.debug("filter applied. " + (this.exclude ? "rejecting" : "keeping"));
         return this.exclude;
     }
 
@@ -96,7 +95,6 @@ public class WithinFilter extends FilterBase {
      */
     public static Filter parseFrom(final byte[] queryBytes) throws DeserializationException {
         String query = new String(queryBytes, StandardCharsets.UTF_8);
-        LOG.debug(String.format("parseFrom(%s)", query));
         WKTReader reader = new WKTReader(GEOMETRY_FACTORY);
         try {
             return new WithinFilter(reader.read(query));
@@ -142,5 +140,9 @@ public class WithinFilter extends FilterBase {
             LOG.error(String.format("Failed to parse coordinate for key " + CellUtil.getCellKeyAsString(cell)));
         }
         return Double.NaN;
+    }
+
+    final String rowKey(final Cell c) {
+        return Bytes.toString(c.getRowArray(), c.getRowOffset(), c.getRowLength());
     }
 }
