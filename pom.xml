@@ -17,8 +17,15 @@
     </properties>
 
     <build>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <includes>
+                    <include>log4j.properties</include>
+                </includes>
+            </testResource>
+        </testResources>
         <plugins>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -50,13 +57,6 @@
             </plugin>
         </plugins>
     </build>
-
-    <!--repositories>
-        <repository>
-            <id>clojars.org</id>
-            <url>http://clojars.org/repo/</url>
-        </repository>
-    </repositories-->
 
     <dependencies>
         <dependency>
@@ -96,6 +96,12 @@
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-testing-util</artifactId>
             <version>2.4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.33</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

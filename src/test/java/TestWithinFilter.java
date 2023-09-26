@@ -10,7 +10,6 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
-import org.apache.hadoop.hbase.filter.TestFilter;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.Region;
@@ -27,7 +26,7 @@ import java.util.*;
 import static org.junit.Assert.assertEquals;
 
 public class TestWithinFilter {
-    private final static Logger LOG = LoggerFactory.getLogger(TestFilter.class);
+    private final static Logger LOG = LoggerFactory.getLogger(TestWithinFilter.class);
     private HRegion region;
 
     private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
@@ -46,7 +45,7 @@ public class TestWithinFilter {
 
     @Before
     public void setup() throws Exception {
-        HTableDescriptor htd = new HTableDescriptor(TableName.valueOf("TestFilter"));
+        HTableDescriptor htd = new HTableDescriptor(TableName.valueOf("TestWithinFilter"));
         HColumnDescriptor family = new HColumnDescriptor(FAMILY).setVersions(100, 100);
         htd.addFamily(family);
         HRegionInfo info = new HRegionInfo(htd.getTableName(), null, null, false);
@@ -91,7 +90,7 @@ public class TestWithinFilter {
         this.region.flush(true);
 
         long end = System.currentTimeMillis();
-        LOG.info(String.format("Geohashed %s records in %sms.", records, end - start));
+        LOG.debug(String.format("Geohashed %s records in %sms.", records, end - start));
     }
 
     @After
@@ -177,13 +176,12 @@ public class TestWithinFilter {
                     sb.append(":");
                     sb.append(Bytes.toString(CellUtil.cloneValue(cell)));
                 }
-                LOG.info(sb.toString());
+                LOG.debug(sb.toString());
             } else {
                 break;
             }
         }
-
-        System.out.println("Rows found: " + i);
+        LOG.info(String.format("%s Rows found.", i));
         return i;
     }
 }
