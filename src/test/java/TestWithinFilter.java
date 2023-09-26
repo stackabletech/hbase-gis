@@ -1,9 +1,6 @@
 import HBaseIA.GIS.filter.WithinFilter;
-import HBaseIA.GIS.model.QueryMatch;
 import ch.hsr.geohash.GeoHash;
 import com.google.common.base.Splitter;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.WKTReader;
 import org.apache.commons.collections.iterators.ArrayIterator;
@@ -156,7 +153,6 @@ public class TestWithinFilter {
             } else {
                 break;
             }
-
         }
 
         System.out.println("Rows found: " + i);
