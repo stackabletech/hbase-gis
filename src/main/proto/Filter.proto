@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+// This file contains protocol buffers that are used for filters
+package hbase.pb;
+
+option java_package = "tech.stackable.gis.hbase.shaded.protobuf.generated";
+option java_outer_classname = "FilterProtos";
+option java_generic_services = true;
+option java_generate_equals_and_hash = true;
+option optimize_for = SPEED;
+
+message WithinFilter {
+  required bytes query = 1;
+  optional string id = 2;
+  optional string table = 3;
+  optional string family = 4;
+  optional string lat_col = 5;
+  optional string lon_col = 6;
+}

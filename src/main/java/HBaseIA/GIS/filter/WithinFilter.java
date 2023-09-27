@@ -1,5 +1,7 @@
 package HBaseIA.GIS.filter;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -15,8 +17,9 @@ import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterBase;
 import org.apache.hadoop.hbase.util.Bytes;
+import tech.stackable.gis.hbase.shaded.protobuf.generated.FilterProtos;
 
-import java.nio.charset.StandardCharsets;
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 
 
@@ -67,7 +70,7 @@ public class WithinFilter extends FilterBase {
             return;
         }
 
-        Coordinate coord = new Coordinate(lon, lat);
+        final Coordinate coord = new Coordinate(lon, lat);
         Geometry point = GEOMETRY_FACTORY.createPoint(coord);
         this.exclude = !query.contains(point);
         if (LOG.isDebugEnabled())
@@ -89,16 +92,16 @@ public class WithinFilter extends FilterBase {
     /**
      * Called by the region server when instantiating a new object.
      *
-     * @param queryBytes A byte array as produced by {@link WithinFilter#toByteArray() toByteArray}
+     * @param pbBytes A byte array as produced by {@link WithinFilter#toByteArray() toByteArray}
      * @return A new instance with the given query.
      * @throws DeserializationException
      */
-    public static Filter parseFrom(final byte[] queryBytes) throws DeserializationException {
-        String query = new String(queryBytes, StandardCharsets.UTF_8);
-        WKTReader reader = new WKTReader(GEOMETRY_FACTORY);
+    public static Filter parseFrom(final byte[] pbBytes) throws DeserializationException {
         try {
-            return new WithinFilter(reader.read(query));
-        } catch (ParseException e) {
+            final FilterProtos.WithinFilter proto = FilterProtos.WithinFilter.parseFrom(pbBytes);
+            final WKTReader reader = new WKTReader(GEOMETRY_FACTORY);
+            return new WithinFilter(reader.read(proto.getQuery().toStringUtf8()));
+        } catch (InvalidProtocolBufferException | ParseException e) {
             throw new DeserializationException(e);
         }
     }
@@ -111,7 +114,13 @@ public class WithinFilter extends FilterBase {
     @Override
     public byte[] toByteArray() {
         final WKTWriter writer = new WKTWriter(2);
-        return writer.write(this.query).getBytes(StandardCharsets.UTF_8);
+        final FilterProtos.WithinFilter.Builder builder = FilterProtos.WithinFilter.newBuilder();
+        try {
+            builder.setQuery(ByteString.copyFrom(writer.write(this.query), "utf8"));
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+        return builder.build().toByteArray();
     }
 
     /**
