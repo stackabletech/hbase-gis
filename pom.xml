@@ -98,11 +98,5 @@
             <version>2.4.12</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>1.7.33</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 </project>
