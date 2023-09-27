@@ -80,7 +80,7 @@ public class TestWithinFilter {
             while ((line = reader.readLine()) != null) {
                 COLS.reset();
                 Iterator<String> vals = SPLITTER.split(line).iterator();
-                Map<String, String> row = new HashMap<String, String>(COLUMNS.length);
+                Map<String, String> row = new HashMap<>(COLUMNS.length);
 
                 while (vals.hasNext() && COLS.hasNext()) {
                     String col = (String) COLS.next();
@@ -228,7 +228,7 @@ public class TestWithinFilter {
             List<Cell> results = new ArrayList<>();
             scanner.next(results);
 
-            Arrays.sort(results.toArray(new Cell[results.size()]), CellComparator.getInstance());
+            Arrays.sort(results.toArray(new Cell[0]), CellComparator.getInstance());
 
             if (!results.isEmpty()) {
                 i++;
