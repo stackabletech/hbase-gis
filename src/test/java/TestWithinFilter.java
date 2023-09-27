@@ -31,9 +31,13 @@ import static org.junit.Assert.assertEquals;
 public class TestWithinFilter {
     private final static Logger LOG = LoggerFactory.getLogger(TestWithinFilter.class);
     private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+
     public static final int POINT_COUNT = 10;
+    public static int WIFI_COUNT;
 
     private static HRegion REGION;
+
+    // TODO use specific families for tests when the filter takes that as a parameter
     private static final byte[] FAMILY = "a".getBytes();
     private static final String[] COLUMNS = new String[]{
             "lon", "lat", "id", "name", "address",
@@ -47,17 +51,13 @@ public class TestWithinFilter {
     private static final byte[] Y_COL = "lat".getBytes();
 
     private static final byte[][] COLUMNS_SCAN = {"id".getBytes(), X_COL, Y_COL};
-
-    //private static final byte[] FAMILY_RECTANGLE_CHECK = "r".getBytes();
     private static final byte[][] COLUMNS_RECTANGLE_CHECK = {X_COL, Y_COL};
 
     @BeforeClass
     public static void before() throws Exception {
         HTableDescriptor htd = new HTableDescriptor(TableName.valueOf("TestWithinFilter"));
         HColumnDescriptor family = new HColumnDescriptor(FAMILY).setVersions(100, 100);
-        //HColumnDescriptor family_rectangle_check = new HColumnDescriptor(FAMILY).setVersions(100, 100);
         htd.addFamily(family);
-        //htd.addFamily(family_rectangle_check);
         HRegionInfo info = new HRegionInfo(htd.getTableName(), null, null, false);
 
         REGION = HBaseTestingUtility.createRegionAndWAL(info, TEST_UTIL.getDataTestDir(),
@@ -72,7 +72,8 @@ public class TestWithinFilter {
         reader.readLine(); // ignore header
         String line;
 
-        int records = 0;
+        int records = 0, duplicates = 0;
+        Set<String> uniqueKeys = new HashSet<>();
         long start = System.currentTimeMillis();
 
         try {
@@ -90,13 +91,19 @@ public class TestWithinFilter {
                 double lat = Double.parseDouble(row.get("lat"));
                 double lon = Double.parseDouble(row.get("lon"));
                 String rowkey = GeoHash.withCharacterPrecision(lat, lon, 12).toBase32();
-                Put put = new Put(rowkey.getBytes());
-                put.setDurability(Durability.SKIP_WAL);
-                for (Map.Entry<String, String> e : row.entrySet()) {
-                    put.addColumn(FAMILY, e.getKey().getBytes(), e.getValue().getBytes());
+                // ignore duplicates
+                if (!uniqueKeys.contains(rowkey)) {
+                    uniqueKeys.add(rowkey);
+                    Put put = new Put(rowkey.getBytes());
+                    put.setDurability(Durability.SKIP_WAL);
+                    for (Map.Entry<String, String> e : row.entrySet()) {
+                        put.addColumn(FAMILY, e.getKey().getBytes(), e.getValue().getBytes());
+                    }
+                    REGION.put(put);
+                    records++;
+                } else {
+                    duplicates++;
                 }
-                REGION.put(put);
-                records++;
             }
         } finally {
             reader.close();
@@ -105,7 +112,8 @@ public class TestWithinFilter {
         REGION.flush(true);
 
         long end = System.currentTimeMillis();
-        LOG.debug(String.format("Geohashed %s records in %sms.", records, end - start));
+        WIFI_COUNT = records;
+        LOG.info(String.format("Geohashed %s records (%s duplicates) in %sms.", records, duplicates, end - start));
     }
 
     private static void load_rectangle_check_data() throws Exception {
@@ -114,7 +122,7 @@ public class TestWithinFilter {
             Put p = new Put(BigInteger.valueOf(i).toByteArray());
             p.setDurability(Durability.SKIP_WAL);
             for (byte[] column : COLUMNS_RECTANGLE_CHECK) {
-                p.addColumn(FAMILY, column, (i +".0").getBytes());
+                p.addColumn(FAMILY, column, (i + ".0").getBytes());
             }
             REGION.put(p);
         }
@@ -130,7 +138,7 @@ public class TestWithinFilter {
     @Test
     public void testWithoutFilter() throws Exception {
         int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY, COLUMNS_SCAN);
-        assertEquals(1234, results);
+        assertEquals(WIFI_COUNT + POINT_COUNT, results);
     }
 
     @Test
@@ -169,7 +177,7 @@ public class TestWithinFilter {
     @Test
     public void testLinePointsWithoutFilter() throws Exception {
         int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY, COLUMNS_RECTANGLE_CHECK);
-        assertEquals(1234, results);
+        assertEquals(WIFI_COUNT + POINT_COUNT, results);
     }
 
     @Test
@@ -186,7 +194,20 @@ public class TestWithinFilter {
         Filter withinFilter = new WithinFilter(query);
         Filter filters = new FilterList(withinFilter);
         int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_RECTANGLE_CHECK);
+        // excludes points lying on the polygon itself
         assertEquals(2, results);
+
+        // slightly extend polygon to catch the third point
+        polygon = "POLYGON ((0.0 0.0, " +
+                "0.0 3.0001, " +
+                "3.0001 3.0001, " +
+                "3.0001 0.0," +
+                "0.0 0.0))";
+        query = reader.read(polygon);
+        withinFilter = new WithinFilter(query);
+        filters = new FilterList(withinFilter);
+        results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_RECTANGLE_CHECK);
+        assertEquals(3, results);
     }
 
     private int queryWithFilterAndRegionScanner(Region region, Filter filters, byte[] family, byte[][] columnsScan) throws IOException {
