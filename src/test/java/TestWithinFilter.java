@@ -152,7 +152,7 @@ public class TestWithinFilter {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query);
+        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), "a".getBytes(), "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
         int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_SCAN);
         assertEquals(26, results);
@@ -168,7 +168,7 @@ public class TestWithinFilter {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query);
+        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), "a".getBytes(), "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
         int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_SCAN);
         assertEquals(10, results);
@@ -191,7 +191,7 @@ public class TestWithinFilter {
                 "0.0 0.0))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query);
+        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), "a".getBytes(), "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
         int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_RECTANGLE_CHECK);
         // excludes points lying on the polygon itself
@@ -204,7 +204,7 @@ public class TestWithinFilter {
                 "3.0001 0.0," +
                 "0.0 0.0))";
         query = reader.read(polygon);
-        withinFilter = new WithinFilter(query);
+        withinFilter = new WithinFilter(query, "wifi".getBytes(), "a".getBytes(), "lat".getBytes(), "lon".getBytes());
         filters = new FilterList(withinFilter);
         results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_RECTANGLE_CHECK);
         assertEquals(3, results);

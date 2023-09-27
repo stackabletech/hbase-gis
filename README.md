@@ -33,7 +33,7 @@ The figures used through this chapter were hand-generated using the
 [Watercolor][4] from Stamen Design and is built from
 [OpenStreetMap][5] data. The JavaScript geohash library used to aid
 those figures is from [David Troy][6] and was slightly modified to produce
-the desired effect.  All code used to generate the figures is
+the desired effect. All code used to generate the figures is
 under the [`figures`][7] directory.
 
 ## Using this GIS example
@@ -45,6 +45,7 @@ issue these commands:
     $ echo "create 'wifi', 'a'" | hbase shell
     $ java -cp target/hbaseia-gis-1.0.0.jar \
       HBaseIA.GIS.Ingest wifi data/wifi_4326.txt
+    $ java -cp '/tmp/hbase-stackable/local/jars/hbaseia-gis-1.0.0.jar:/stackable/conf' HBaseIA.GIS.Ingest wifi /tmp/wifi_4326.txt
 
 Once your data is loaded, two queries have been implemented. The first
 one is k-nearest neighbors. This query is implemented entirely
@@ -84,7 +85,7 @@ Now you can run the query:
                  -73.990839 40.756400, \
                  -73.984422 40.753642, \
                  -73.980844 40.758703))"
-    java -cp '/tmp/hbase-stackable/local/jars/hbaseia-gis-1.0.0.jar:/stackable/conf' HBaseIA.GIS.WithinQuery remote "POLYGON ((-73.980844 40.758703, -73.987214 40.761369, -73.990839 40.756400, -73.984422 40.753642, -73.980844 40.758703))"
+    $ java -cp '/tmp/hbase-stackable/local/jars/hbaseia-gis-1.0.0.jar:/stackable/conf' HBaseIA.GIS.WithinQuery remote "POLYGON ((-73.980844 40.758703, -73.987214 40.761369, -73.990839 40.756400, -73.984422 40.753642, -73.980844 40.758703))"
 
 ## License
 
@@ -93,11 +94,19 @@ Copyright (C) 2012 Nick Dimiduk, Amandeep Khurana
 Distributed under the [Apache License, version 2.0][8], the same as HBase.
 
 [0]: http://www.manning.com/dimidukkhurana
+
 [1]: https://github.com/flexiondotorg/oab-java6
+
 [2]: https://nycopendata.socrata.com/d/ehc4-fktp
+
 [3]: http://leaflet.cloudmade.com/
+
 [4]: http://maps.stamen.com/#watercolor
+
 [5]: http://www.openstreetmap.org
+
 [6]: https://github.com/davetroy/geohash-js/
+
 [7]: https://github.com/hbaseinaction/gis/tree/master/figures
+
 [8]: http://www.apache.org/licenses/LICENSE-2.0.html

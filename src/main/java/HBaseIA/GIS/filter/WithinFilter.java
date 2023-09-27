@@ -1,5 +1,7 @@
 package HBaseIA.GIS.filter;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -15,27 +17,28 @@ import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterBase;
 import org.apache.hadoop.hbase.util.Bytes;
+import tech.stackable.gis.hbase.shaded.protobuf.generated.FilterProtos;
 
-import java.nio.charset.StandardCharsets;
+import java.io.UnsupportedEncodingException;
 import java.util.List;
-
 
 public class WithinFilter extends FilterBase {
 
-    static final byte[] TABLE = "wifi".getBytes();
-    static final byte[] FAMILY = "a".getBytes();
-    static final byte[] ID = "id".getBytes();
-    static final byte[] X_COL = "lon".getBytes();
-    static final byte[] Y_COL = "lat".getBytes();
-
     static final Log LOG = LogFactory.getLog(WithinFilter.class);
-
-    static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
-    protected Geometry query = null;
+    static private final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
+    private final Geometry query;
+    private final byte[] table;
+    private final byte[] family;
+    private final byte[] lat_col;
+    private final byte[] lon_col;
     protected boolean exclude = false;
 
-    public WithinFilter(final Geometry query) {
+    public WithinFilter(final Geometry query, byte[] table, byte[] family, byte[] latCol, byte[] lonCol) {
         this.query = query;
+        this.table = table;
+        this.family = family;
+        this.lat_col = latCol;
+        this.lon_col = lonCol;
     }
 
     @Override
@@ -55,9 +58,9 @@ public class WithinFilter extends FilterBase {
         }
 
         for (Cell cell : kvs) {
-            if (CellUtil.matchingColumn(cell, FAMILY, X_COL))
+            if (CellUtil.matchingColumn(cell, family, lon_col))
                 lon = parseCoordinate(cell);
-            if (CellUtil.matchingColumn(cell, FAMILY, Y_COL))
+            if (CellUtil.matchingColumn(cell, family, lat_col))
                 lat = parseCoordinate(cell);
         }
 
@@ -67,7 +70,7 @@ public class WithinFilter extends FilterBase {
             return;
         }
 
-        Coordinate coord = new Coordinate(lon, lat);
+        final Coordinate coord = new Coordinate(lon, lat);
         Geometry point = GEOMETRY_FACTORY.createPoint(coord);
         this.exclude = !query.contains(point);
         if (LOG.isDebugEnabled())
@@ -89,16 +92,17 @@ public class WithinFilter extends FilterBase {
     /**
      * Called by the region server when instantiating a new object.
      *
-     * @param queryBytes A byte array as produced by {@link WithinFilter#toByteArray() toByteArray}
+     * @param pbBytes A byte array as produced by {@link WithinFilter#toByteArray() toByteArray}
      * @return A new instance with the given query.
      * @throws DeserializationException
      */
-    public static Filter parseFrom(final byte[] queryBytes) throws DeserializationException {
-        String query = new String(queryBytes, StandardCharsets.UTF_8);
-        WKTReader reader = new WKTReader(GEOMETRY_FACTORY);
+    public static Filter parseFrom(final byte[] pbBytes) throws DeserializationException {
         try {
-            return new WithinFilter(reader.read(query));
-        } catch (ParseException e) {
+            final FilterProtos.WithinFilter proto = FilterProtos.WithinFilter.parseFrom(pbBytes);
+            final WKTReader reader = new WKTReader(GEOMETRY_FACTORY);
+            return new WithinFilter(reader.read(proto.getQuery().toStringUtf8()),
+                    proto.getTable().toByteArray(), proto.getFamily().toByteArray(), proto.getLatCol().toByteArray(), proto.getLonCol().toByteArray());
+        } catch (InvalidProtocolBufferException | ParseException e) {
             throw new DeserializationException(e);
         }
     }
@@ -111,7 +115,17 @@ public class WithinFilter extends FilterBase {
     @Override
     public byte[] toByteArray() {
         final WKTWriter writer = new WKTWriter(2);
-        return writer.write(this.query).getBytes(StandardCharsets.UTF_8);
+        final FilterProtos.WithinFilter.Builder builder = FilterProtos.WithinFilter.newBuilder();
+        try {
+            return builder.setQuery(ByteString.copyFrom(writer.write(this.query), "utf8"))
+                    .setTable(ByteString.copyFrom(table))
+                    .setFamily(ByteString.copyFrom(family))
+                    .setLatCol(ByteString.copyFrom(lat_col))
+                    .setLonCol(ByteString.copyFrom(lon_col))
+                    .build().toByteArray();
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
