@@ -27,9 +27,9 @@ import static org.junit.Assert.assertEquals;
 
 public class TestWithinFilter {
     private final static Logger LOG = LoggerFactory.getLogger(TestWithinFilter.class);
-    private HRegion region;
-
     private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+
+    private static HRegion REGION;
     private static final byte[] FAMILY = "a".getBytes();
     private static final String[] COLUMNS = new String[]{
             "lon", "lat", "id", "name", "address",
@@ -43,14 +43,14 @@ public class TestWithinFilter {
     private static final byte[] X_COL = "lon".getBytes();
     private static final byte[] Y_COL = "lat".getBytes();
 
-    @Before
-    public void setup() throws Exception {
+    @BeforeClass
+    public static void before() throws Exception {
         HTableDescriptor htd = new HTableDescriptor(TableName.valueOf("TestWithinFilter"));
         HColumnDescriptor family = new HColumnDescriptor(FAMILY).setVersions(100, 100);
         htd.addFamily(family);
         HRegionInfo info = new HRegionInfo(htd.getTableName(), null, null, false);
 
-        this.region = HBaseTestingUtility.createRegionAndWAL(info, TEST_UTIL.getDataTestDir(),
+        REGION = HBaseTestingUtility.createRegionAndWAL(info, TEST_UTIL.getDataTestDir(),
                 TEST_UTIL.getConfiguration(), htd);
 
         BufferedReader reader = new BufferedReader(new FileReader("src/test/resources/wifi_4326.txt"));
@@ -80,22 +80,22 @@ public class TestWithinFilter {
                 for (Map.Entry<String, String> e : row.entrySet()) {
                     put.addColumn(FAMILY, e.getKey().getBytes(), e.getValue().getBytes());
                 }
-                this.region.put(put);
+                REGION.put(put);
                 records++;
             }
         } finally {
             reader.close();
         }
 
-        this.region.flush(true);
+        REGION.flush(true);
 
         long end = System.currentTimeMillis();
         LOG.debug(String.format("Geohashed %s records in %sms.", records, end - start));
     }
 
-    @After
-    public void tearDown() throws Exception {
-        HBaseTestingUtility.closeRegionAndWAL(region);
+    @AfterClass
+    public static void after() throws Exception {
+        HBaseTestingUtility.closeRegionAndWAL(REGION);
     }
 
     @Test
@@ -109,7 +109,7 @@ public class TestWithinFilter {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-        int results = queryWithFilterAndRegionScanner(query, this.region, new FilterList());
+        int results = queryWithFilterAndRegionScanner(query, REGION, new FilterList());
         assertEquals(1224, results);
     }
 
@@ -126,7 +126,7 @@ public class TestWithinFilter {
         Geometry query = reader.read(polygon);
         Filter withinFilter = new WithinFilter(query);
         Filter filters = new FilterList(withinFilter);
-        int results = queryWithFilterAndRegionScanner(query, this.region, filters);
+        int results = queryWithFilterAndRegionScanner(query, REGION, filters);
         assertEquals(26, results);
     }
 
@@ -142,7 +142,7 @@ public class TestWithinFilter {
         Geometry query = reader.read(polygon);
         Filter withinFilter = new WithinFilter(query);
         Filter filters = new FilterList(withinFilter);
-        int results = queryWithFilterAndRegionScanner(query, this.region, filters);
+        int results = queryWithFilterAndRegionScanner(query, REGION, filters);
         assertEquals(10, results);
     }
 
