@@ -1,3 +1,4 @@
+import HBaseIA.GIS.BulkIngest;
 import HBaseIA.GIS.filter.WithinFilter;
 import ch.hsr.geohash.GeoHash;
 import com.google.common.base.Splitter;
@@ -38,7 +39,10 @@ public class TestWithinFilter {
     private static HRegion REGION;
 
     // TODO use specific families for tests when the filter takes that as a parameter
-    private static final byte[] FAMILY = "a".getBytes();
+    private static final byte[] FAMILY_A = "a".getBytes();
+    private static final byte[] FAMILY_B = "b".getBytes();
+    private static final byte[] FAMILY_C = "c".getBytes();
+    
     private static final String[] COLUMNS = new String[]{
             "lon", "lat", "id", "name", "address",
             "city", "url", "phone", "type", "zip"};
@@ -208,6 +212,25 @@ public class TestWithinFilter {
         filters = new FilterList(withinFilter);
         results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_RECTANGLE_CHECK);
         assertEquals(3, results);
+    }
+
+    @Test
+    public void testBulkIngest()  throws Exception {
+        int row_count = 1000;
+        long start = System.currentTimeMillis();
+
+        // generate random co-ordinates within a fixed region
+        PrimitiveIterator.OfDouble lon_iter = new Random().doubles(-75, -70).iterator();
+        PrimitiveIterator.OfDouble lat_iter = new Random().doubles(40, 45).iterator();
+
+        for (int i = 0; i < row_count; i++) {
+            Put put = BulkIngest.getPut(i, lon_iter, lat_iter);
+            REGION.put(put);
+        }
+        REGION.flush(true);
+
+        long end = System.currentTimeMillis();
+        LOG.info(String.format("Geohashed %s records in %sms.", row_count, end - start));
     }
 
     private int queryWithFilterAndRegionScanner(Region region, Filter filters, byte[] family, byte[][] columnsScan) throws IOException {
