@@ -1,4 +1,4 @@
-package HBaseIA.GIS;
+package tech.stackable.gis.hbase;
 
 import ch.hsr.geohash.GeoHash;
 import org.apache.commons.lang.RandomStringUtils;

@@ -1,4 +1,4 @@
-package HBaseIA.GIS.filter;
+package tech.stackable.gis.hbase.filter;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
