@@ -17,7 +17,7 @@ A toolbox for working with very large Geographic Information System data.
 
 ## Deploy to Kind
 
-Install the Stackable HBase Operator and dependencies
+Install the Stackable Data Platform operators
 
     kubectl create ns stackable-operators \
         && stackablectl -n stackable-operators op in commons secret zookeeper hdfs hbase
@@ -42,11 +42,11 @@ Create a table
 
 Load data
 
-    java -cp '/tmp/hbase-stackable/local/jars/hbaseia-gis-1.0.0.jar:/stackable/conf' tech.stackable.gis.hbase.Ingest wifi /tmp/wifi_4326.txt
+    java -cp '/tmp/hbase-stackable/local/jars/hbase-gis-1.0.0.jar:/stackable/conf' tech.stackable.gis.hbase.Ingest wifi /tmp/wifi_4326.txt
 
 ## Using the WithinFilter
 
-    java -cp '/tmp/hbase-stackable/local/jars/hbaseia-gis-1.0.0.jar:/stackable/conf' \
+    java -cp '/tmp/hbase-stackable/local/jars/hbase-gis-1.0.0.jar:/stackable/conf' \
     tech.stackable.gis.hbase.WithinQuery \
     remote \
     "POLYGON ((-73.980844 40.758703, \
@@ -59,7 +59,7 @@ You should get 26 results.
 
 ## Using the KNNFilter
 
-    java -cp '/tmp/hbase-stackable/local/jars/hbaseia-gis-1.0.0.jar:/stackable/conf' tech.stackable.gis.hbase.KNNQuery -73.97000655 40.76098703 5
+    java -cp '/tmp/hbase-stackable/local/jars/hbase-gis-1.0.0.jar:/stackable/conf' tech.stackable.gis.hbase.KNNQuery -73.97000655 40.76098703 5
 
 ## Acknowledgements
 
