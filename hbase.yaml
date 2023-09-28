@@ -78,7 +78,7 @@ data:
     log4j.appender.console.layout=org.apache.log4j.PatternLayout
     log4j.appender.console.layout.ConversionPattern=%-5p %c{1} - %m%n 
     log4j.rootLogger=INFO, console
-    log4j.logger.HBaseIA.GIS.filter=DEBUG
+    log4j.logger.tech.stackable.gis.hbase.filter=DEBUG
     log4j.logger.org.apache.hadoop.hbase.filter=DEBUG;
 ---
 apiVersion: hbase.stackable.tech/v1alpha1
