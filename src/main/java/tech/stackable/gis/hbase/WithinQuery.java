@@ -1,7 +1,5 @@
-package HBaseIA.GIS;
+package tech.stackable.gis.hbase;
 
-import HBaseIA.GIS.filter.WithinFilter;
-import HBaseIA.GIS.model.QueryMatch;
 import ch.hsr.geohash.BoundingBox;
 import ch.hsr.geohash.GeoHash;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -17,6 +15,8 @@ import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
+import tech.stackable.gis.hbase.filter.WithinFilter;
+import tech.stackable.gis.hbase.model.QueryMatch;
 
 import java.io.IOException;
 import java.util.Arrays;

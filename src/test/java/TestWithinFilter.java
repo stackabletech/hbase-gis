@@ -1,4 +1,3 @@
-import HBaseIA.GIS.filter.WithinFilter;
 import ch.hsr.geohash.GeoHash;
 import com.google.common.base.Splitter;
 import com.vividsolutions.jts.geom.Geometry;
@@ -19,6 +18,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.stackable.gis.hbase.filter.WithinFilter;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
