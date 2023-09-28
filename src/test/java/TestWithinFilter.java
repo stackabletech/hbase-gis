@@ -27,18 +27,18 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public class TestWithinFilter {
     private final static Logger LOG = LoggerFactory.getLogger(TestWithinFilter.class);
     private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
     public static final int POINT_COUNT = 10;
+    public static final String TABLE = "TestWithinFilter";
     public static int WIFI_COUNT;
 
     private static HRegion REGION;
 
-    // TODO use specific families for tests when the filter takes that as a parameter
     private static final byte[] FAMILY_A = "a".getBytes();
     private static final byte[] FAMILY_B = "b".getBytes();
     private static final byte[] FAMILY_C = "c".getBytes();
@@ -59,9 +59,13 @@ public class TestWithinFilter {
 
     @BeforeClass
     public static void before() throws Exception {
-        HTableDescriptor htd = new HTableDescriptor(TableName.valueOf("TestWithinFilter"));
-        HColumnDescriptor family = new HColumnDescriptor(FAMILY).setVersions(100, 100);
-        htd.addFamily(family);
+        HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(TABLE));
+        HColumnDescriptor family_a = new HColumnDescriptor(FAMILY_A).setVersions(100, 100);
+        HColumnDescriptor family_b = new HColumnDescriptor(FAMILY_B).setVersions(100, 100);
+        HColumnDescriptor family_c = new HColumnDescriptor(FAMILY_C).setVersions(100, 100);
+        htd.addFamily(family_a);
+        htd.addFamily(family_b);
+        htd.addFamily(family_c);
         HRegionInfo info = new HRegionInfo(htd.getTableName(), null, null, false);
 
         REGION = HBaseTestingUtility.createRegionAndWAL(info, TEST_UTIL.getDataTestDir(),
@@ -101,7 +105,7 @@ public class TestWithinFilter {
                     Put put = new Put(rowkey.getBytes());
                     put.setDurability(Durability.SKIP_WAL);
                     for (Map.Entry<String, String> e : row.entrySet()) {
-                        put.addColumn(FAMILY, e.getKey().getBytes(), e.getValue().getBytes());
+                        put.addColumn(FAMILY_A, e.getKey().getBytes(), e.getValue().getBytes());
                     }
                     REGION.put(put);
                     records++;
@@ -126,7 +130,7 @@ public class TestWithinFilter {
             Put p = new Put(BigInteger.valueOf(i).toByteArray());
             p.setDurability(Durability.SKIP_WAL);
             for (byte[] column : COLUMNS_RECTANGLE_CHECK) {
-                p.addColumn(FAMILY, column, (i + ".0").getBytes());
+                p.addColumn(FAMILY_B, column, (i + ".0").getBytes());
             }
             REGION.put(p);
         }
@@ -141,8 +145,8 @@ public class TestWithinFilter {
 
     @Test
     public void testWithoutFilter() throws Exception {
-        int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY, COLUMNS_SCAN);
-        assertEquals(WIFI_COUNT + POINT_COUNT, results);
+        int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_A, COLUMNS_SCAN);
+        assertEquals(WIFI_COUNT, results);
     }
 
     @Test
@@ -156,9 +160,9 @@ public class TestWithinFilter {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), "a".getBytes(), "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_A, "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
-        int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_SCAN);
+        int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_A, COLUMNS_SCAN);
         assertEquals(26, results);
     }
 
@@ -172,16 +176,16 @@ public class TestWithinFilter {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), "a".getBytes(), "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_A, "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
-        int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_SCAN);
+        int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_A, COLUMNS_SCAN);
         assertEquals(10, results);
     }
 
     @Test
     public void testLinePointsWithoutFilter() throws Exception {
-        int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY, COLUMNS_RECTANGLE_CHECK);
-        assertEquals(WIFI_COUNT + POINT_COUNT, results);
+        int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_B, COLUMNS_RECTANGLE_CHECK);
+        assertEquals(POINT_COUNT, results);
     }
 
     @Test
@@ -195,9 +199,9 @@ public class TestWithinFilter {
                 "0.0 0.0))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), "a".getBytes(), "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_B, "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
-        int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_RECTANGLE_CHECK);
+        int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_B, COLUMNS_RECTANGLE_CHECK);
         // excludes points lying on the polygon itself
         assertEquals(2, results);
 
@@ -208,9 +212,9 @@ public class TestWithinFilter {
                 "3.0001 0.0," +
                 "0.0 0.0))";
         query = reader.read(polygon);
-        withinFilter = new WithinFilter(query, "wifi".getBytes(), "a".getBytes(), "lat".getBytes(), "lon".getBytes());
+        withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_B, "lat".getBytes(), "lon".getBytes());
         filters = new FilterList(withinFilter);
-        results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_RECTANGLE_CHECK);
+        results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_B, COLUMNS_RECTANGLE_CHECK);
         assertEquals(3, results);
     }
 
@@ -220,17 +224,36 @@ public class TestWithinFilter {
         long start = System.currentTimeMillis();
 
         // generate random co-ordinates within a fixed region
-        PrimitiveIterator.OfDouble lon_iter = new Random().doubles(-75, -70).iterator();
-        PrimitiveIterator.OfDouble lat_iter = new Random().doubles(40, 45).iterator();
+        PrimitiveIterator.OfDouble lon_iter = new Random().doubles(-75.99, -75.01).iterator();
+        PrimitiveIterator.OfDouble lat_iter = new Random().doubles(44.01, 44.99).iterator();
 
         for (int i = 0; i < row_count; i++) {
-            Put put = BulkIngest.getPut(i, lon_iter, lat_iter);
+            Put put = BulkIngest.getPut(FAMILY_C, i, lon_iter, lat_iter);
+            LOG.debug("Put:{}", put);
             REGION.put(put);
         }
         REGION.flush(true);
 
         long end = System.currentTimeMillis();
-        LOG.info(String.format("Geohashed %s records in %sms.", row_count, end - start));
+        LOG.info(String.format("Geohashed %s bulk ingest records in %sms.", row_count, end - start));
+
+        int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_C, COLUMNS_RECTANGLE_CHECK);
+        // assume no duplicates
+        assertEquals(row_count, results);
+
+        WKTReader reader = new WKTReader();
+
+        String polygon = "POLYGON ((-76.0 44.0, " +
+                "-76.0 45.0, " +
+                "-75.0 45.0, " +
+                "-75.0 44.0, " +
+                "-76.0 44.0))";
+
+        Geometry query = reader.read(polygon);
+        Filter withinFilter = new WithinFilter(query, "bulk".getBytes(), FAMILY_C, "lat".getBytes(), "lon".getBytes());
+        Filter filters = new FilterList(withinFilter);
+        int filtered = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_C, COLUMNS_RECTANGLE_CHECK);
+        assertEquals(row_count, filtered);
     }
 
     private int queryWithFilterAndRegionScanner(Region region, Filter filters, byte[] family, byte[][] columnsScan) throws IOException {
