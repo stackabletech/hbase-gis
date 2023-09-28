@@ -21,7 +21,7 @@ public class BulkIngest {
             "  limits - the applied co-ordinate ranage in the form: lon_min,lon_max,lat_min,lat_max\n" +
             "\n" +
             "generates a geohash for the rowkey.\n" +
-            "records are stored in columns in the 'a' family, columns are:\n" +
+            "records are stored in columns in the specified family, columns are:\n" +
             "  lon,lat,id,name,address,city,url,phone,type,zip\n";
 
     public static void main(String[] args) throws IOException {
