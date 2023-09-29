@@ -16,7 +16,15 @@ message KNNRequest {
 }
 
 message KNNResponse {
+  // TODO: Update the client and the endpoint to use Point instead of keys
   repeated bytes keys = 1;
+}
+
+message Point {
+  optional bytes key = 1;
+  optional double lat = 2;
+  optional double lon = 3;
+  optional double distance = 4;
 }
 
 service KNNService {
