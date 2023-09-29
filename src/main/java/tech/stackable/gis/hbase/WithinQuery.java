@@ -190,7 +190,7 @@ public class WithinQuery {
 
         Connection connection = ConnectionFactory.createConnection(conf);
         try {
-
+            long start = System.currentTimeMillis();
             WithinQuery q = new WithinQuery(connection);
             Set<QueryMatch> results;
             if ("local".equals(args[0])) {
@@ -198,11 +198,15 @@ public class WithinQuery {
             } else {
                 results = q.queryWithFilter(query);
             }
+            long end = System.currentTimeMillis();
 
-            System.out.println("Query matched " + results.size() + " points.");
             for (QueryMatch result : results) {
                 System.out.println(result);
             }
+
+            System.out.println(
+                    String.format("Query matched %s points in %sms.",
+                            results.size(), end - start));
         } finally {
             connection.close();
         }
