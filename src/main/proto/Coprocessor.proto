@@ -1,0 +1,25 @@
+syntax = "proto2";
+
+option java_package = "tech.stackable.gis.hbase.generated";
+option java_outer_classname = "KNN";
+option java_generic_services = true;
+option java_generate_equals_and_hash = true;
+option optimize_for = SPEED;
+
+message KNNRequest {
+  optional int32 count = 1;
+  optional double lat = 2;
+  optional double lon = 3;
+  optional bytes family = 4;
+  optional bytes lat_col = 5;
+  optional bytes lon_col = 6;
+}
+
+message KNNResponse {
+  repeated bytes keys = 1;
+}
+
+service KNNService {
+  rpc getKNN(KNNRequest)
+      returns (KNNResponse);
+}
