@@ -50,9 +50,20 @@ public class BulkIngest {
             System.exit(0);
         }
 
+        Double lon_min = Double.valueOf(limits[0]);
+        Double lon_max = Double.valueOf(limits[1]);
+        Double lat_min = Double.valueOf(limits[2]);
+        Double lat_max = Double.valueOf(limits[3]);
+
+        // sanity check
+        if (lon_min >= lon_max || lat_min >= lat_max) {
+            System.out.println(usage);
+            System.exit(0);
+        }
+
         // generate random co-ordinates within a fixed region
-        PrimitiveIterator.OfDouble lon_iter = new Random().doubles(Double.valueOf(limits[0]), Double.valueOf(limits[1])).iterator();
-        PrimitiveIterator.OfDouble lat_iter = new Random().doubles(Double.valueOf(limits[2]), Double.valueOf(limits[3])).iterator();
+        PrimitiveIterator.OfDouble lon_iter = new Random().doubles(lon_min, lon_max).iterator();
+        PrimitiveIterator.OfDouble lat_iter = new Random().doubles(lat_min, lat_max).iterator();
 
         try {
             for (int i = 0; i < row_count; i++) {

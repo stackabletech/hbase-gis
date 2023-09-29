@@ -6,19 +6,11 @@ import org.apache.commons.collections.iterators.ArrayIterator;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
-import org.apache.hadoop.hbase.regionserver.HRegion;
-import org.apache.hadoop.hbase.regionserver.InternalScanner;
-import org.apache.hadoop.hbase.regionserver.Region;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import tech.stackable.gis.hbase.BulkIngest;
 import tech.stackable.gis.hbase.filter.WithinFilter;
 
 import java.io.BufferedReader;
@@ -27,22 +19,13 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
-public class TestWithinFilter {
-    private final static Logger LOG = LoggerFactory.getLogger(TestWithinFilter.class);
-    private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
-
+public class TestWithinFilter extends AbstractTestFilter {
     public static final int POINT_COUNT = 10;
     public static final String TABLE = "TestWithinFilter";
-    public static int WIFI_COUNT;
-
-    private static HRegion REGION;
-
     private static final byte[] FAMILY_A = "a".getBytes();
     private static final byte[] FAMILY_B = "b".getBytes();
-    private static final byte[] FAMILY_C = "c".getBytes();
-    
     private static final String[] COLUMNS = new String[]{
             "lon", "lat", "id", "name", "address",
             "city", "url", "phone", "type", "zip"};
@@ -50,22 +33,19 @@ public class TestWithinFilter {
     private static final Splitter SPLITTER = Splitter.on('\t')
             .trimResults()
             .limit(COLUMNS.length);
-
     private static final byte[] X_COL = "lon".getBytes();
     private static final byte[] Y_COL = "lat".getBytes();
-
     private static final byte[][] COLUMNS_SCAN = {"id".getBytes(), X_COL, Y_COL};
     private static final byte[][] COLUMNS_RECTANGLE_CHECK = {X_COL, Y_COL};
+    public static int WIFI_COUNT;
 
     @BeforeClass
     public static void before() throws Exception {
         HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(TABLE));
         HColumnDescriptor family_a = new HColumnDescriptor(FAMILY_A).setVersions(100, 100);
         HColumnDescriptor family_b = new HColumnDescriptor(FAMILY_B).setVersions(100, 100);
-        HColumnDescriptor family_c = new HColumnDescriptor(FAMILY_C).setVersions(100, 100);
         htd.addFamily(family_a);
         htd.addFamily(family_b);
-        htd.addFamily(family_c);
         HRegionInfo info = new HRegionInfo(htd.getTableName(), null, null, false);
 
         REGION = HBaseTestingUtility.createRegionAndWAL(info, TEST_UTIL.getDataTestDir(),
@@ -216,82 +196,5 @@ public class TestWithinFilter {
         filters = new FilterList(withinFilter);
         results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_B, COLUMNS_RECTANGLE_CHECK);
         assertEquals(3, results);
-    }
-
-    @Test
-    public void testBulkIngest()  throws Exception {
-        int row_count = 1000;
-        long start = System.currentTimeMillis();
-
-        // generate random co-ordinates within a fixed region
-        PrimitiveIterator.OfDouble lon_iter = new Random().doubles(-75.99, -75.01).iterator();
-        PrimitiveIterator.OfDouble lat_iter = new Random().doubles(44.01, 44.99).iterator();
-
-        for (int i = 0; i < row_count; i++) {
-            Put put = BulkIngest.getPut(FAMILY_C, i, lon_iter, lat_iter);
-            LOG.debug("Put:{}", put);
-            REGION.put(put);
-        }
-        REGION.flush(true);
-
-        long end = System.currentTimeMillis();
-        LOG.info(String.format("Geohashed %s bulk ingest records in %sms.", row_count, end - start));
-
-        int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_C, COLUMNS_RECTANGLE_CHECK);
-        // assume no duplicates
-        assertEquals(row_count, results);
-
-        WKTReader reader = new WKTReader();
-
-        String polygon = "POLYGON ((-76.0 44.0, " +
-                "-76.0 45.0, " +
-                "-75.0 45.0, " +
-                "-75.0 44.0, " +
-                "-76.0 44.0))";
-
-        Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, "bulk".getBytes(), FAMILY_C, "lat".getBytes(), "lon".getBytes());
-        Filter filters = new FilterList(withinFilter);
-        int filtered = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_C, COLUMNS_RECTANGLE_CHECK);
-        assertEquals(row_count, filtered);
-    }
-
-    private int queryWithFilterAndRegionScanner(Region region, Filter filters, byte[] family, byte[][] columnsScan) throws IOException {
-        Scan scan = new Scan();
-        scan.setFilter(filters);
-        scan.addFamily(family);
-        scan.readVersions(1);
-        scan.setCaching(50);
-        for (byte[] column : columnsScan) {
-            scan.addColumn(family, column);
-        }
-
-        InternalScanner scanner = region.getScanner(scan);
-        int i = 0;
-
-        while (true) {
-            StringBuilder sb = new StringBuilder();
-            List<Cell> results = new ArrayList<>();
-            scanner.next(results);
-
-            Arrays.sort(results.toArray(new Cell[0]), CellComparator.getInstance());
-
-            if (!results.isEmpty()) {
-                i++;
-                sb.append("Columns -");
-
-                for (Cell cell : results) {
-                    sb.append(" ");
-                    sb.append(Bytes.toString(CellUtil.cloneQualifier(cell)));
-                    sb.append(":");
-                    sb.append(Bytes.toString(CellUtil.cloneValue(cell)));
-                }
-                LOG.debug(sb.toString());
-            } else {
-                break;
-            }
-        }
-        LOG.info(String.format("%s Rows found.", i));
-        return i;
     }
 }
