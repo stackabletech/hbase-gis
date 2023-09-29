@@ -67,7 +67,6 @@ public class KNNEndpoint extends KNN.KNNService implements Coprocessor, Coproces
             scanner = env.getRegion().getScanner(scan);
             List<Cell> results = new ArrayList<>();
             boolean hasMore = false;
-            long sum = 0L;
 
             do {
                 var lon = Double.NaN;

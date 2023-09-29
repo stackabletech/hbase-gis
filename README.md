@@ -72,11 +72,14 @@ For the bulk-loaded data
         -75.9 44.97, \
         -76.0 44.97))"
 
-You should get a subset of the bulk-loaded back as the results of this query (due to the way that the query polygon and the limits of the randomly generated data have been defined.)
+You should get a subset of the bulk-loaded back as the results of this query (due to the way that the query polygon and
+the limits of the randomly generated data have been defined.)
 
 ## Using the KNNFilter
 
     java -cp '/tmp/hbase-stackable/local/jars/hbase-gis-1.0.0.jar:/stackable/conf' tech.stackable.gis.hbase.KNNQuery -73.97000655 40.76098703 5
+
+    java -cp '/tmp/hbase-stackable/local/jars/hbase-gis-1.0.0.jar:/stackable/conf' tech.stackable.gis.hbase.coprocessor.KNNClient
 
 ## Acknowledgements
 
