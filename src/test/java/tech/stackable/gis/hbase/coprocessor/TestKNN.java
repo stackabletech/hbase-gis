@@ -115,6 +115,9 @@ public class TestKNN {
     }
 
     @Test
+    /*
+    See https://github.com/apache/hbase/blob/rel/2.4.12/hbase-server/src/test/java/org/apache/hadoop/hbase/coprocessor/TestCoprocessorInterface.java#L381
+     */
     public void testKNNSingleRegion() throws Exception {
         Configuration conf = TEST_UTIL.getConfiguration();
         RegionCoprocessorHost host = new RegionCoprocessorHost(REGION, Mockito.mock(RegionServerServices.class), conf);
@@ -147,6 +150,10 @@ public class TestKNN {
         KNN.KNNResponse response = rpcCallback.get();
 
         // a single region, so we should get the same count back
-        assertEquals(10, response.getKeysList().size());
+        assertEquals(10, response.getPointsCount());
+
+        for (KNN.Point neighbour : response.getPointsList()) {
+            LOG.info("Distance to neighbour: " + neighbour.getDistance());
+        }
     }
 }

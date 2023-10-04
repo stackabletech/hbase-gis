@@ -22,4 +22,8 @@ public class DistComp implements Comparator<Neighbor> {
             LOG.warn("negative distance detected!");
         return Double.compare(o1Distance, o2Distance);
     }
+
+    public double distance(Neighbor neighbor) {
+        return origin.distance(neighbor.lon, neighbor.lat);
+    }
 }

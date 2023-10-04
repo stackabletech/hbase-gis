@@ -7,7 +7,10 @@ import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.ByteBufferExtendedCell;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorException;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorService;
@@ -89,7 +92,10 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
             // build the result
             var resBuilder = KNN.KNNResponse.newBuilder();
             for (Neighbor neighbor : knns) {
-                resBuilder.addKeys(ByteString.copyFrom(neighbor.key, Charsets.UTF_8));
+                resBuilder.addPoints(KNN.Point.newBuilder().setKey(ByteString.copyFrom(neighbor.key, Charsets.UTF_8))
+                        .setLat(neighbor.lat)
+                        .setLon(neighbor.lon)
+                        .setDistance(distComp.distance(neighbor)));
             }
             response = resBuilder.build();
         } catch (IOException ioe) {

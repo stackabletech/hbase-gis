@@ -16,8 +16,7 @@ message KNNRequest {
 }
 
 message KNNResponse {
-  // TODO: Update the client and the endpoint to use Point instead of keys
-  repeated bytes keys = 1;
+  repeated Point points = 1;
 }
 
 message Point {

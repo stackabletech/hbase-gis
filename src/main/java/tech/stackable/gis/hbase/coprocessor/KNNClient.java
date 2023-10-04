@@ -2,7 +2,6 @@ package tech.stackable.gis.hbase.coprocessor;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
-import com.google.protobuf.RpcController;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
@@ -43,20 +42,20 @@ public class KNNClient {
                 .setLonCol(ByteString.copyFrom(lonColArg.getBytes()))
                 .build();
 
-        Map<byte[], List<ByteString>> results = table.coprocessorService(
+        Map<byte[], List<KNN.Point>> results = table.coprocessorService(
                 KNN.KNNService.class,
                 null,  // start key
                 null,  // end   key
                 aggregate -> {
                     BlockingRpcCallback<KNN.KNNResponse> rpcCallback = new BlockingRpcCallback<>();
-                    aggregate.getKNN((RpcController) null, request, rpcCallback);
+                    aggregate.getKNN(null, request, rpcCallback);
                     KNN.KNNResponse response = rpcCallback.get();
 
-                    return response.getKeysList();
+                    return response.getPointsList();
                 }
         );
 
-        for (List<ByteString> regionKNN : results.values()) {
+        for (List<KNN.Point> regionKNN : results.values()) {
             System.out.println("region KNN size = " + regionKNN.size());
         }
     }
