@@ -9,6 +9,7 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import tech.stackable.gis.hbase.AbstractTestUtil;
 import tech.stackable.gis.hbase.BulkIngest;
 
 import java.util.PrimitiveIterator;
@@ -16,7 +17,7 @@ import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
-public class TestBulkIngest extends AbstractTestFilter {
+public class TestBulkIngest extends AbstractTestUtil {
     public static final String TABLE = "TestWithinFilter";
     private static final byte[] FAMILY = "a".getBytes();
     private static final byte[] X_COL = "lon".getBytes();
