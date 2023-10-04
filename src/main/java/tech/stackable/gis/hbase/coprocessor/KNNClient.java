@@ -10,7 +10,6 @@ import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import tech.stackable.gis.hbase.generated.KNN;
 
 import java.io.IOException;
@@ -48,15 +47,12 @@ public class KNNClient {
                 KNN.KNNService.class,
                 null,  // start key
                 null,  // end   key
-                new Batch.Call<KNN.KNNService, List<ByteString>>() {
-                    @Override
-                    public List<ByteString> call(KNN.KNNService aggregate) throws IOException {
-                        BlockingRpcCallback<KNN.KNNResponse> rpcCallback = new BlockingRpcCallback<>();
-                        aggregate.getKNN((RpcController) null, request, rpcCallback);
-                        KNN.KNNResponse response = rpcCallback.get();
+                aggregate -> {
+                    BlockingRpcCallback<KNN.KNNResponse> rpcCallback = new BlockingRpcCallback<>();
+                    aggregate.getKNN((RpcController) null, request, rpcCallback);
+                    KNN.KNNResponse response = rpcCallback.get();
 
-                        return response.getKeysList();
-                    }
+                    return response.getKeysList();
                 }
         );
 

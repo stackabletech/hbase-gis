@@ -1,3 +1,5 @@
+package tech.stackable.gis.hbase.filter;
+
 import ch.hsr.geohash.GeoHash;
 import com.google.common.base.Splitter;
 import com.vividsolutions.jts.geom.Geometry;
@@ -11,7 +13,6 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import tech.stackable.gis.hbase.filter.WithinFilter;
 
 import java.io.BufferedReader;
 import java.io.FileReader;

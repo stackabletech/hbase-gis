@@ -11,6 +11,7 @@ import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorException;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorService;
+import org.apache.hadoop.hbase.coprocessor.RegionCoprocessor;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.shaded.protobuf.ResponseConverter;
@@ -22,7 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class KNNEndpoint extends KNN.KNNService implements Coprocessor, CoprocessorService {
+public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, CoprocessorService {
     static final Log LOG = LogFactory.getLog(KNNEndpoint.class);
 
     private RegionCoprocessorEnvironment env;
@@ -62,11 +63,11 @@ public class KNNEndpoint extends KNN.KNNService implements Coprocessor, Coproces
         KNN.KNNResponse response = null;
         InternalScanner scanner = null;
         final var distComp = new DistComp(request.getLat(), request.getLon());
-        final MinMaxPriorityQueue<Neighbor> knns = MinMaxPriorityQueue.<Neighbor>orderedBy(distComp).maximumSize(count).create();
+        final MinMaxPriorityQueue<Neighbor> knns = MinMaxPriorityQueue.orderedBy(distComp).maximumSize(count).create();
         try {
             scanner = env.getRegion().getScanner(scan);
             List<Cell> results = new ArrayList<>();
-            boolean hasMore = false;
+            boolean hasMore;
 
             do {
                 var lon = Double.NaN;
@@ -87,10 +88,8 @@ public class KNNEndpoint extends KNN.KNNService implements Coprocessor, Coproces
 
             // build the result
             var resBuilder = KNN.KNNResponse.newBuilder();
-            int i = 0;
             for (Neighbor neighbor : knns) {
-                resBuilder.setKeys(i, ByteString.copyFrom(neighbor.key, Charsets.UTF_8));
-                i++;
+                resBuilder.addKeys(ByteString.copyFrom(neighbor.key, Charsets.UTF_8));
             }
             response = resBuilder.build();
         } catch (IOException ioe) {

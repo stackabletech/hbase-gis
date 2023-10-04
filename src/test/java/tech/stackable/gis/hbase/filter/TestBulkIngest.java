@@ -1,3 +1,5 @@
+package tech.stackable.gis.hbase.filter;
+
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.WKTReader;
 import org.apache.hadoop.hbase.*;
@@ -8,7 +10,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import tech.stackable.gis.hbase.BulkIngest;
-import tech.stackable.gis.hbase.filter.WithinFilter;
 
 import java.util.PrimitiveIterator;
 import java.util.Random;

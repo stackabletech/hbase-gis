@@ -1,3 +1,5 @@
+package tech.stackable.gis.hbase.filter;
+
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
@@ -17,7 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class AbstractTestFilter {
-    protected final static Logger LOG = LoggerFactory.getLogger(TestBulkIngest.class);
+    protected final static Logger LOG = LoggerFactory.getLogger(AbstractTestFilter.class);
     protected final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
     protected static HRegion REGION;
 
