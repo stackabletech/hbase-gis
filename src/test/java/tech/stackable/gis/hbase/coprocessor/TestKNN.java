@@ -1,9 +1,11 @@
 package tech.stackable.gis.hbase.coprocessor;
 
+import com.google.common.collect.Sets;
 import com.google.protobuf.ByteString;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessor;
+import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.junit.AfterClass;
@@ -12,6 +14,11 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.stackable.gis.hbase.AbstractTestUtil;
 import tech.stackable.gis.hbase.generated.KNN;
+import tech.stackable.gis.hbase.model.QueryMatch;
+
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -55,15 +62,14 @@ public class TestKNN extends AbstractTestUtil {
         // check coprocessor was loaded
         assertNotNull(host.findCoprocessor(KNNEndpoint.class.getName()));
 
-        Coprocessor c = REGION.getCoprocessorHost().findCoprocessor(KNNEndpoint.class);
-        assertTrue(c instanceof KNNEndpoint);
-        KNNEndpoint knn = (KNNEndpoint) c;
+        KNNEndpoint knn = REGION.getCoprocessorHost().findCoprocessor(KNNEndpoint.class);
 
         var latArg = -73.97000655;
         var lonArg = 40.76098703;
 
+        int topX = 10;
         KNN.KNNRequest request = KNN.KNNRequest.newBuilder()
-                .setCount(10)
+                .setCount(topX)
                 .setLat(latArg)
                 .setLon(lonArg)
                 .setFamily(ByteString.copyFrom(FAMILY_A))
@@ -76,10 +82,25 @@ public class TestKNN extends AbstractTestUtil {
         KNN.KNNResponse response = rpcCallback.get();
 
         // a single region, so we should get the same count back
-        assertEquals(10, response.getPointsCount());
+        assertEquals(topX, response.getPointsCount());
+
+        // compare to the dataset
+        List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_A, COLUMNS_SCAN);
+        final var distComp = new DistComp(latArg, lonArg);
+        Set<Double> distances = Sets.newTreeSet();
+        Set<Double> neighbourDistances = Sets.newTreeSet();
 
         for (KNN.Point neighbour : response.getPointsList()) {
-            LOG.info("Distance to neighbour: " + neighbour.getDistance());
+            neighbourDistances.add(neighbour.getDistance());
+        }
+        for (QueryMatch result : results) {
+            distances.add(distComp.distance(new Neighbor(result.id, result.lat, result.lon)));
+        }
+        Iterator<Double> iterator = distances.iterator();
+        // compare both sets of top-X
+        for (Double d : neighbourDistances) {
+            LOG.info("Distance to neighbour: [{}]", d);
+            assertEquals(d, iterator.next());
         }
     }
 }

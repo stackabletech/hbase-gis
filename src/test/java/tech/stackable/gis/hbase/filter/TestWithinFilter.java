@@ -11,8 +11,10 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import tech.stackable.gis.hbase.AbstractTestUtil;
+import tech.stackable.gis.hbase.model.QueryMatch;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -20,9 +22,6 @@ public class TestWithinFilter extends AbstractTestUtil {
     public static final int POINT_COUNT = 10;
     public static final String TABLE = "TestWithinFilter";
     private static final byte[] FAMILY_B = "b".getBytes();
-    private static final byte[] X_COL = "lon".getBytes();
-    private static final byte[] Y_COL = "lat".getBytes();
-    private static final byte[][] COLUMNS_SCAN = {"id".getBytes(), X_COL, Y_COL};
     private static final byte[][] COLUMNS_RECTANGLE_CHECK = {X_COL, Y_COL};
 
     @BeforeClass
@@ -62,8 +61,8 @@ public class TestWithinFilter extends AbstractTestUtil {
 
     @Test
     public void testWithoutFilter() throws Exception {
-        int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_A, COLUMNS_SCAN);
-        assertEquals(WIFI_COUNT, results);
+        List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_A, COLUMNS_SCAN);
+        assertEquals(WIFI_COUNT, results.size());
     }
 
     @Test
@@ -79,8 +78,8 @@ public class TestWithinFilter extends AbstractTestUtil {
         Geometry query = reader.read(polygon);
         Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_A, "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
-        int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_A, COLUMNS_SCAN);
-        assertEquals(26, results);
+        List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_A, COLUMNS_SCAN);
+        assertEquals(26, results.size());
     }
 
     @Test
@@ -95,14 +94,14 @@ public class TestWithinFilter extends AbstractTestUtil {
         Geometry query = reader.read(polygon);
         Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_A, "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
-        int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_A, COLUMNS_SCAN);
-        assertEquals(10, results);
+        List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_A, COLUMNS_SCAN);
+        assertEquals(10, results.size());
     }
 
     @Test
     public void testLinePointsWithoutFilter() throws Exception {
-        int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_B, COLUMNS_RECTANGLE_CHECK);
-        assertEquals(POINT_COUNT, results);
+        List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_B, COLUMNS_RECTANGLE_CHECK);
+        assertEquals(POINT_COUNT, results.size());
     }
 
     @Test
@@ -118,9 +117,9 @@ public class TestWithinFilter extends AbstractTestUtil {
         Geometry query = reader.read(polygon);
         Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_B, "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
-        int results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_B, COLUMNS_RECTANGLE_CHECK);
+        List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_B, COLUMNS_RECTANGLE_CHECK);
         // excludes points lying on the polygon itself
-        assertEquals(2, results);
+        assertEquals(2, results.size());
 
         // slightly extend polygon to catch the third point
         polygon = "POLYGON ((0.0 0.0, " +
@@ -132,6 +131,6 @@ public class TestWithinFilter extends AbstractTestUtil {
         withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_B, "lat".getBytes(), "lon".getBytes());
         filters = new FilterList(withinFilter);
         results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_B, COLUMNS_RECTANGLE_CHECK);
-        assertEquals(3, results);
+        assertEquals(3, results.size());
     }
 }

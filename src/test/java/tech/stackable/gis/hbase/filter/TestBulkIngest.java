@@ -11,7 +11,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import tech.stackable.gis.hbase.AbstractTestUtil;
 import tech.stackable.gis.hbase.BulkIngest;
+import tech.stackable.gis.hbase.model.QueryMatch;
 
+import java.util.List;
 import java.util.PrimitiveIterator;
 import java.util.Random;
 
@@ -20,10 +22,6 @@ import static org.junit.Assert.assertEquals;
 public class TestBulkIngest extends AbstractTestUtil {
     public static final String TABLE = "TestWithinFilter";
     private static final byte[] FAMILY = "a".getBytes();
-    private static final byte[] X_COL = "lon".getBytes();
-    private static final byte[] Y_COL = "lat".getBytes();
-
-    private static final byte[][] COLUMNS_SCAN = {"id".getBytes(), X_COL, Y_COL};
 
     @BeforeClass
     public static void before() throws Exception {
@@ -52,17 +50,17 @@ public class TestBulkIngest extends AbstractTestUtil {
 
         for (int i = 0; i < row_count; i++) {
             Put put = BulkIngest.getPut(FAMILY, i, lon_iter, lat_iter);
-            LOG.debug("Put:{}", put);
+            LOG.debug("Put:[{}]", put);
             REGION.put(put);
         }
         REGION.flush(true);
 
         long end = System.currentTimeMillis();
-        LOG.info(String.format("Geohashed %s bulk ingest records in %sms.", row_count, end - start));
+        LOG.info("Geohashed [{}] bulk ingest records in [{}]ms.", row_count, end - start);
 
-        int results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY, COLUMNS_SCAN);
+        List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY, COLUMNS_SCAN);
         // assume no duplicates
-        assertEquals(row_count, results);
+        assertEquals(row_count, results.size());
 
         WKTReader reader = new WKTReader();
 
@@ -75,7 +73,7 @@ public class TestBulkIngest extends AbstractTestUtil {
         Geometry query = reader.read(polygon);
         Filter withinFilter = new WithinFilter(query, "bulk".getBytes(), FAMILY, "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
-        int filtered = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_SCAN);
-        assertEquals(row_count, filtered);
+        List<QueryMatch> filtered = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_SCAN);
+        assertEquals(row_count, filtered.size());
     }
 }

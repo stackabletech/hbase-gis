@@ -17,6 +17,7 @@ import org.apache.hadoop.hbase.regionserver.Region;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.stackable.gis.hbase.model.QueryMatch;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -29,6 +30,9 @@ public class AbstractTestUtil {
     protected static HRegion REGION;
     protected static final byte[] FAMILY_A = "a".getBytes();
     protected static int WIFI_COUNT;
+    protected static final byte[] X_COL = "lon".getBytes();
+    protected static final byte[] Y_COL = "lat".getBytes();
+    protected static final byte[][] COLUMNS_SCAN = {"id".getBytes(), X_COL, Y_COL};
 
     private static final String[] COLUMNS = new String[]{
             "lon", "lat", "id", "name", "address",
@@ -84,10 +88,10 @@ public class AbstractTestUtil {
 
         long end = System.currentTimeMillis();
         WIFI_COUNT = records;
-        LOG.info(String.format("Geohashed %s records (%s duplicates) in %sms.", records, duplicates, end - start));
+        LOG.info("Geohashed [{}] records ([{}] duplicates) in [{}]ms.", records, duplicates, end - start);
     }
 
-    protected static int queryWithFilterAndRegionScanner(Region region, Filter filters, byte[] family, byte[][] columnsScan) throws IOException {
+    protected static List<QueryMatch> queryWithFilterAndRegionScanner(Region region, Filter filters, byte[] family, byte[][] columnsScan) throws IOException {
         Scan scan = new Scan();
         scan.setFilter(filters);
         scan.addFamily(family);
@@ -97,8 +101,8 @@ public class AbstractTestUtil {
             scan.addColumn(family, column);
         }
 
+        List<QueryMatch> matches = new ArrayList<>();
         InternalScanner scanner = region.getScanner(scan);
-        int i = 0;
 
         while (true) {
             StringBuilder sb = new StringBuilder();
@@ -108,21 +112,36 @@ public class AbstractTestUtil {
             Arrays.sort(results.toArray(new Cell[0]), CellComparator.getInstance());
 
             if (!results.isEmpty()) {
-                i++;
                 sb.append("Columns -");
 
+                var lon = Double.NaN;
+                var lat = Double.NaN;
+                String id = null;
+
                 for (Cell cell : results) {
+                    byte[] qualifier = CellUtil.cloneQualifier(cell);
+                    String value = Bytes.toString(CellUtil.cloneValue(cell));
+                    id = CellUtil.getCellKeyAsString(cell);
+
+                    if (CellUtil.matchingColumn(cell, family, X_COL))
+                        lon = Double.parseDouble(value);
+                    if (CellUtil.matchingColumn(cell, family, "id".getBytes()))
+                        id = value;
+                    if (CellUtil.matchingColumn(cell, family, Y_COL))
+                        lat = Double.parseDouble(value);
+
                     sb.append(" ");
-                    sb.append(Bytes.toString(CellUtil.cloneQualifier(cell)));
+                    sb.append(new String(qualifier));
                     sb.append(":");
-                    sb.append(Bytes.toString(CellUtil.cloneValue(cell)));
+                    sb.append(value);
                 }
                 LOG.debug(sb.toString());
+                matches.add(new QueryMatch(id, null, lon, lat));
             } else {
                 break;
             }
         }
-        LOG.info(String.format("%s Rows found.", i));
-        return i;
+        LOG.info("[{}] Rows found.", matches.size());
+        return matches;
     }
 }
