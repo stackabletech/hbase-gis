@@ -115,7 +115,7 @@ public class TestKNN {
     }
 
     @Test
-    public void testKNN() throws Exception {
+    public void testKNNSingleRegion() throws Exception {
         Configuration conf = TEST_UTIL.getConfiguration();
         RegionCoprocessorHost host = new RegionCoprocessorHost(REGION, Mockito.mock(RegionServerServices.class), conf);
         REGION.setCoprocessorHost(host);
