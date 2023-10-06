@@ -203,9 +203,8 @@ public class WithinQuery {
                 System.out.println(result);
             }
 
-            System.out.println(
-                    String.format("Query matched %s points in %sms.",
-                            results.size(), end - start));
+            System.out.printf("Query matched %s points in %sms.%n",
+                    results.size(), end - start);
         }
     }
 }

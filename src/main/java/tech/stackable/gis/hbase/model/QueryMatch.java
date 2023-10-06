@@ -1,9 +1,10 @@
 package tech.stackable.gis.hbase.model;
 
 public class QueryMatch {
-    public String id;
-    public String hash;
-    public double lon, lat;
+    public final String id;
+    public final String hash;
+    public final double lon;
+    public final double lat;
     public double distance = Double.NaN;
 
     public QueryMatch(String id, String hash, double lon, double lat) {
