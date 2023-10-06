@@ -44,7 +44,7 @@ public class AbstractTestUtil {
 
     protected static void load_wifi_data() throws IOException {
         BufferedReader reader = new BufferedReader(new FileReader("src/test/resources/wifi_4326.txt"));
-        reader.readLine(); // ignore header
+        reader.readLine(); // consume header
         String line;
 
         int records = 0, duplicates = 0;
