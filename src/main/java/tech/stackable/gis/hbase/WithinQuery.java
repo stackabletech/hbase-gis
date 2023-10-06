@@ -144,7 +144,7 @@ public class WithinQuery {
 
     public Set<QueryMatch> queryWithFilter(Geometry query) throws IOException {
         GeoHash[] prefixes = minimumBoundingPrefixes(query);
-        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), "a".getBytes(), "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, "a".getBytes(), "lat".getBytes(), "lon".getBytes());
         Set<QueryMatch> ret = new HashSet<>();
         Table table = pool.getTable(TableName.valueOf(TABLE));
 

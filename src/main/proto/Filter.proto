@@ -11,8 +11,7 @@ option optimize_for = SPEED;
 
 message WithinFilter {
   required bytes query = 1;
-  required bytes table = 2;
-  required bytes family = 3;
-  required bytes lat_col = 4;
-  required bytes lon_col = 5;
+  required bytes family = 2;
+  required bytes lat_col = 3;
+  required bytes lon_col = 4;
 }

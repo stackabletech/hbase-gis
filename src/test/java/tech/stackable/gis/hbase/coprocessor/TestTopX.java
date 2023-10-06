@@ -151,5 +151,9 @@ public class TestTopX {
                 .setReferenceCol(ByteString.copyFrom("pu_id".getBytes()))
                 .setTimestampCol(ByteString.copyFrom("pu_ts".getBytes()))
                 .build();
+
+        //BlockingRpcCallback<TopX.TopXResponse> rpcCallback = new BlockingRpcCallback<>();
+        //topx.getTopX(null, request, rpcCallback);
+        //TopX.TopXResponse response = rpcCallback.get();
     }
 }
