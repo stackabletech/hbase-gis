@@ -144,7 +144,7 @@ public class TestTopX {
         assertNotNull(host.findCoprocessor(TopXEndpoint.class.getName()));
         TopXEndpoint topx = REGION.getCoprocessorHost().findCoprocessor(TopXEndpoint.class);
 
-        int topX = 10;
+        int topX = 2;
         TopX.TopXRequest request = TopX.TopXRequest.newBuilder()
                 .setCount(topX)
                 .setFamily(ByteString.copyFrom(FAMILY))
@@ -152,8 +152,10 @@ public class TestTopX {
                 .setTimestampCol(ByteString.copyFrom("pu_ts".getBytes()))
                 .build();
 
-        //BlockingRpcCallback<TopX.TopXResponse> rpcCallback = new BlockingRpcCallback<>();
-        //topx.getTopX(null, request, rpcCallback);
-        //TopX.TopXResponse response = rpcCallback.get();
+        BlockingRpcCallback<TopX.TopXResponse> rpcCallback = new BlockingRpcCallback<>();
+        topx.getTopX(null, request, rpcCallback);
+        TopX.TopXResponse response = rpcCallback.get();
+        LOG.info("Unique references [{}]", response.getCandidatesCount());
+        assertEquals(207, response.getCandidatesCount());
     }
 }

@@ -3,9 +3,9 @@ package tech.stackable.gis.hbase.coprocessor;
 public class Item implements Comparable<Item> {
     public final String key;
     public final String item;
-    public final double timestamp;
+    public final long timestamp;
 
-    public Item(String key, String item, double timestamp) {
+    public Item(String key, String item, long timestamp) {
         this.key = key;
         this.item = item;
         this.timestamp = timestamp;
@@ -13,6 +13,6 @@ public class Item implements Comparable<Item> {
 
     @Override
     public int compareTo(Item item) {
-        return Double.compare(this.timestamp, item.timestamp);
+        return Long.compare(this.timestamp, item.timestamp);
     }
 }

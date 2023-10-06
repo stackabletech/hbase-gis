@@ -58,53 +58,35 @@ public class TopXEndpoint extends TopX.TopXService implements RegionCoprocessor,
         final byte[] tsCol = request.getTimestampCol().toByteArray();
         final int count = request.getCount();
 
-        // note each unique value of the reference column
         Scan scan = new Scan();
         scan.addFamily(family);
         scan.addColumn(family, referenceCol);
+        scan.addColumn(family, tsCol);
         scan.readVersions(1);
 
         Map<String, TopXQueue> uniqueVals = new HashMap<>();
         TopX.TopXResponse response = null;
         try (InternalScanner scanner = env.getRegion().getScanner(scan)) {
             List<Cell> results = new ArrayList<>();
-            boolean hasMore, hasMoreItems;
+            boolean hasMore;
 
             do {
+                String ref = null;
+                Long ts = null;
                 hasMore = scanner.next(results);
                 for (Cell cell : results) {
                     if (CellUtil.matchingColumn(cell, family, referenceCol)) {
-                        String value = Bytes.toString(CellUtil.cloneValue(cell));
-                        if (!uniqueVals.containsKey(value)) {
-                            uniqueVals.put(value, new TopXQueue(count));
+                        ref = Bytes.toString(CellUtil.cloneValue(cell));
+                    }
+                    if (CellUtil.matchingColumn(cell, family, tsCol)) {
+                        ts = Long.parseLong(Bytes.toString(CellUtil.cloneValue(cell)));
+                    }
+                    if (ref != null && ts != null) {
+                        if (!uniqueVals.containsKey(ref)) {
+                            uniqueVals.put(ref, new TopXQueue(count));
                         }
-                        // scan for this entry
-                        Scan itemScan = new Scan();
-                        itemScan.addFamily(family);
-                        itemScan.addColumn(family, referenceCol);
-                        InternalScanner itemScanner = env.getRegion().getScanner(itemScan);
-                        List<Cell> itemResults = new ArrayList<>();
-                        TopXQueue cachedItems = uniqueVals.get(value);
-                        do {
-                            hasMoreItems = itemScanner.next(itemResults);
-                            var ts = Double.NaN;
-                            String ref = null;
-                            for (Cell itemCell : itemResults) {
-                                if (CellUtil.matchingColumn(itemCell, family, referenceCol)) {
-                                    ref = Bytes.toString(CellUtil.cloneValue(cell));
-                                    if (!ref.equals(value)) {
-                                        break;
-                                    }
-                                }
-                                if (CellUtil.matchingColumn(itemCell, family, tsCol)) {
-                                    ts = Double.parseDouble(Bytes.toString(CellUtil.cloneValue(cell)));
-                                }
-                                if (ref != null && !Double.isNaN(ts)) {
-                                    cachedItems.add(new Item(CellUtil.getCellKeyAsString(itemCell), ref, ts));
-                                }
-                            }
-                            itemResults.clear();
-                        } while (hasMoreItems);
+                        TopXQueue cachedItems = uniqueVals.get(ref);
+                        cachedItems.add(new Item(CellUtil.getCellKeyAsString(cell), ref, ts));
                     }
                 }
                 results.clear();
