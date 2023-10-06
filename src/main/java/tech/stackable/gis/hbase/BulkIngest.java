@@ -50,10 +50,10 @@ public class BulkIngest {
             System.exit(0);
         }
 
-        Double lon_min = Double.valueOf(limits[0]);
-        Double lon_max = Double.valueOf(limits[1]);
-        Double lat_min = Double.valueOf(limits[2]);
-        Double lat_max = Double.valueOf(limits[3]);
+        double lon_min = Double.parseDouble(limits[0]);
+        double lon_max = Double.parseDouble(limits[1]);
+        double lat_min = Double.parseDouble(limits[2]);
+        double lat_max = Double.parseDouble(limits[3]);
 
         // sanity check
         if (lon_min >= lon_max || lat_min >= lat_max) {

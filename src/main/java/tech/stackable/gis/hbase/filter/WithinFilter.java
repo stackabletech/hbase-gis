@@ -136,22 +136,21 @@ public class WithinFilter extends FilterBase {
      * @return A coordinate value or Double.NaN in case if an error.
      */
     final Double parseCoordinate(final Cell cell) {
-        byte[] value = null;
-        int offset = 0;
-        int len = 0;
+        byte[] value;
+        int offset;
+        int len;
         if (cell instanceof ByteBufferExtendedCell) {
             value = ((ByteBufferExtendedCell) cell).getValueByteBuffer().array();
             offset = ((ByteBufferExtendedCell) cell).getValuePosition();
-            len = cell.getValueLength();
         } else {
             value = cell.getValueArray();
             offset = cell.getValueOffset();
-            len = cell.getValueLength();
         }
+        len = cell.getValueLength();
         try {
             return Double.parseDouble(Bytes.toString(value, offset, len));
         } catch (NumberFormatException nfe) {
-            LOG.error(String.format("Failed to parse coordinate for key " + CellUtil.getCellKeyAsString(cell)));
+            LOG.error("Failed to parse coordinate for key " + CellUtil.getCellKeyAsString(cell));
         }
         return Double.NaN;
     }

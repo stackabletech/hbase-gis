@@ -69,9 +69,8 @@ public class KNNQuery {
 
         table.close();
 
-        System.out.println(
-                String.format("Scan over '%s' returned %s candidates.",
-                        prefix, cnt));
+        System.out.printf("Scan over '%s' returned %s candidates.%n",
+                prefix, cnt);
         return candidates;
     }
 
@@ -106,8 +105,7 @@ public class KNNQuery {
 
         HBaseAdmin.available(conf);
 
-        Connection connection = ConnectionFactory.createConnection(conf);
-        try {
+        try (Connection connection = ConnectionFactory.createConnection(conf)) {
 
             KNNQuery q = new KNNQuery(connection);
             Queue<QueryMatch> ret = q.queryKNN(lat, lon, n);
@@ -116,8 +114,6 @@ public class KNNQuery {
             while ((m = ret.poll()) != null) {
                 System.out.println(m);
             }
-        } finally {
-            connection.close();
         }
     }
 }

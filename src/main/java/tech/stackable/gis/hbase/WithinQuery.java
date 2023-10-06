@@ -46,7 +46,7 @@ public class WithinQuery {
 
     Set<Coordinate> getCoords(GeoHash hash) {
         BoundingBox bbox = hash.getBoundingBox();
-        Set<Coordinate> coords = new HashSet<Coordinate>(4);
+        Set<Coordinate> coords = new HashSet<>(4);
 
         double lon = bbox.getSouthEastCorner().getLongitude();
         double lat = bbox.getSouthEastCorner().getLatitude();
@@ -68,7 +68,7 @@ public class WithinQuery {
     }
 
     Geometry convexHull(GeoHash[] hashes) {
-        Set<Coordinate> coords = new HashSet<Coordinate>();
+        Set<Coordinate> coords = new HashSet<>();
         for (GeoHash hash : hashes) {
             coords.addAll(getCoords(hash));
         }
@@ -103,7 +103,7 @@ public class WithinQuery {
 
     public Set<QueryMatch> query(Geometry query) throws IOException {
         GeoHash[] prefixes = minimumBoundingPrefixes(query);
-        Set<QueryMatch> ret = new HashSet<QueryMatch>();
+        Set<QueryMatch> ret = new HashSet<>();
         Table table = pool.getTable(TableName.valueOf(TABLE));
 
         for (GeoHash prefix : prefixes) {
@@ -145,7 +145,7 @@ public class WithinQuery {
     public Set<QueryMatch> queryWithFilter(Geometry query) throws IOException {
         GeoHash[] prefixes = minimumBoundingPrefixes(query);
         Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), "a".getBytes(), "lat".getBytes(), "lon".getBytes());
-        Set<QueryMatch> ret = new HashSet<QueryMatch>();
+        Set<QueryMatch> ret = new HashSet<>();
         Table table = pool.getTable(TableName.valueOf(TABLE));
 
         for (GeoHash prefix : prefixes) {
@@ -188,8 +188,7 @@ public class WithinQuery {
 
         HBaseAdmin.available(conf);
 
-        Connection connection = ConnectionFactory.createConnection(conf);
-        try {
+        try (Connection connection = ConnectionFactory.createConnection(conf)) {
             long start = System.currentTimeMillis();
             WithinQuery q = new WithinQuery(connection);
             Set<QueryMatch> results;
@@ -207,8 +206,6 @@ public class WithinQuery {
             System.out.println(
                     String.format("Query matched %s points in %sms.",
                             results.size(), end - start));
-        } finally {
-            connection.close();
         }
     }
 }
