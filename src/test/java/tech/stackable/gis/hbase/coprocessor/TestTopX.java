@@ -38,8 +38,6 @@ public class TestTopX {
 
     private static final String TABLE = "TestTopX";
     private static final byte[] FAMILY = "a".getBytes();
-    private static final byte[] PU = "pu_id".getBytes();
-    private static final byte[] DO = "do_id".getBytes();
 
     private static final String[] COLUMNS = new String[]{
             "vendor_id", "pu_ts", "do_ts", "p_count", "trip", "ratecode_id", "flag", "pu_id",
