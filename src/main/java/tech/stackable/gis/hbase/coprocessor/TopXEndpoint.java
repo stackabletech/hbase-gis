@@ -92,6 +92,8 @@ public class TopXEndpoint extends TopX.TopXService implements RegionCoprocessor,
                 results.clear();
             } while (hasMore);
 
+            LOG.info(String.format("Retrieved %s unique values with %s entries", uniqueVals.keySet().size(), uniqueVals.values().size()));
+
             var resBuilder = TopX.TopXResponse.newBuilder();
 
             for (Map.Entry<String, TopXQueue> itemQueue : uniqueVals.entrySet()) {
@@ -102,6 +104,8 @@ public class TopXEndpoint extends TopX.TopXService implements RegionCoprocessor,
                 }
             }
             response = resBuilder.build();
+            LOG.info(String.format("Retrieved %s candidates", response.getCandidatesList().size()));
+
 
         } catch (IOException ioe) {
             ResponseConverter.setControllerException(controller, ioe);

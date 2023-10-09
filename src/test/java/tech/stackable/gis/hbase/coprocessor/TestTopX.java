@@ -1,8 +1,6 @@
 package tech.stackable.gis.hbase.coprocessor;
 
-import ch.hsr.geohash.GeoHash;
 import com.google.common.base.Splitter;
-import com.google.common.collect.Sets;
 import com.google.protobuf.ByteString;
 import org.apache.commons.collections.iterators.ArrayIterator;
 import org.apache.hadoop.conf.Configuration;
@@ -10,7 +8,6 @@ import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessor;
-import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
@@ -21,9 +18,7 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.stackable.gis.hbase.AbstractTestUtil;
-import tech.stackable.gis.hbase.generated.KNN;
 import tech.stackable.gis.hbase.generated.TopX;
-import tech.stackable.gis.hbase.model.QueryMatch;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -142,9 +137,28 @@ public class TestTopX {
         host.postOpen();
 
         assertNotNull(host.findCoprocessor(TopXEndpoint.class.getName()));
-        TopXEndpoint topx = REGION.getCoprocessorHost().findCoprocessor(TopXEndpoint.class);
+        TopXEndpoint endpoint = REGION.getCoprocessorHost().findCoprocessor(TopXEndpoint.class);
 
-        int topX = 2;
+        TopX.TopXResponse response = getTopXResponse(endpoint, 2);
+        LOG.info("Unique references [{}]", response.getCandidatesCount());
+        assertEquals(207, response.getCandidatesCount());
+
+        // return all rows, should match number imported
+        response = getTopXResponse(endpoint, TRIP_COUNT);
+        LOG.info("Unique references [{}]", response.getCandidatesCount());
+        assertEquals(TRIP_COUNT, response.getCandidatesCount());
+
+        // check a specific key
+        int count = 0;
+        for (TopX.Candidate candidate : response.getCandidatesList()) {
+            if (Integer.parseInt(new String(candidate.getKey().toByteArray())) == 68) {
+                count++;
+            }
+        }
+        assertEquals(141, count);
+    }
+
+    private TopX.TopXResponse getTopXResponse(TopXEndpoint endpoint, int topX) throws IOException {
         TopX.TopXRequest request = TopX.TopXRequest.newBuilder()
                 .setCount(topX)
                 .setFamily(ByteString.copyFrom(FAMILY))
@@ -153,9 +167,8 @@ public class TestTopX {
                 .build();
 
         BlockingRpcCallback<TopX.TopXResponse> rpcCallback = new BlockingRpcCallback<>();
-        topx.getTopX(null, request, rpcCallback);
+        endpoint.getTopX(null, request, rpcCallback);
         TopX.TopXResponse response = rpcCallback.get();
-        LOG.info("Unique references [{}]", response.getCandidatesCount());
-        assertEquals(207, response.getCandidatesCount());
+        return response;
     }
 }
