@@ -70,7 +70,7 @@ public class WithinFilter extends FilterBase {
 
         final Coordinate coord = new Coordinate(lon, lat);
         Geometry point = GEOMETRY_FACTORY.createPoint(coord);
-        this.exclude = !query.contains(point);
+        this.exclude = !query.covers(point);
         if (LOG.isDebugEnabled())
             LOG.debug(String.format("row key=%s, lat=%f, lon=%f, filter applied=%s", rowKey(kvs.get(0)),
                     lat, lon,

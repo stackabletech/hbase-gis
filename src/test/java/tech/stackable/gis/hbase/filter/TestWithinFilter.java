@@ -109,9 +109,9 @@ public class TestWithinFilter extends AbstractTestUtil {
         WKTReader reader = new WKTReader();
 
         String polygon = "POLYGON ((0.0 0.0, " +
-                "0.0 3.0, " +
-                "3.0 3.0, " +
-                "3.0 0.0," +
+                "0.0 2.999, " +
+                "2.999 2.999, " +
+                "2.999 0.0," +
                 "0.0 0.0))";
 
         Geometry query = reader.read(polygon);
@@ -121,11 +121,11 @@ public class TestWithinFilter extends AbstractTestUtil {
         // excludes points lying on the polygon itself
         assertEquals(2, results.size());
 
-        // slightly extend polygon to catch the third point
+        // slightly extend polygon to catch the third point (as we are using .covers rather than .contains)
         polygon = "POLYGON ((0.0 0.0, " +
-                "0.0 3.0001, " +
-                "3.0001 3.0001, " +
-                "3.0001 0.0," +
+                "0.0 3.0, " +
+                "3.0 3.0, " +
+                "3.0 0.0," +
                 "0.0 0.0))";
         query = reader.read(polygon);
         withinFilter = new WithinFilter(query, FAMILY_B, "lat".getBytes(), "lon".getBytes());

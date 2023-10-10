@@ -86,12 +86,12 @@ public class WithinQuery {
                     precision);
 
             candidateGeom = convexHull(new GeoHash[]{candidate});
-            if (candidateGeom.contains(query)) {
+            if (candidateGeom.covers(query)) {
                 return new GeoHash[]{candidate};
             }
 
             candidateGeom = convexHull(candidate.getAdjacent());
-            if (candidateGeom.contains(query)) {
+            if (candidateGeom.covers(query)) {
                 GeoHash[] ret = Arrays.copyOf(candidate.getAdjacent(), 9);
                 ret[8] = candidate;
                 return ret;
@@ -133,7 +133,7 @@ public class WithinQuery {
             QueryMatch candidate = iter.next();
             Coordinate coord = new Coordinate(candidate.lon, candidate.lat);
             Geometry point = factory.createPoint(coord);
-            if (!query.contains(point)) {
+            if (!query.covers(point)) {
                 iter.remove();
                 exclusionCount++;
             }
