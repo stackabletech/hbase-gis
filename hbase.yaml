@@ -78,8 +78,9 @@ data:
     log4j.appender.console.layout=org.apache.log4j.PatternLayout
     log4j.appender.console.layout.ConversionPattern=%-5p %c{1} - %m%n 
     log4j.rootLogger=INFO, console
-    log4j.logger.HBaseIA.GIS.filter=DEBUG
+    log4j.logger.tech.stackable.gis.hbase.filter=DEBUG
     log4j.logger.org.apache.hadoop.hbase.filter=DEBUG;
+    log4j.logger.org.apache.hadoop.hbase.regionserver.HRegion=DEBUG;
 ---
 apiVersion: hbase.stackable.tech/v1alpha1
 kind: HbaseCluster
@@ -101,9 +102,12 @@ spec:
     roleGroups:
       default:
         configOverrides:
+          hbase-env.sh:
+            HBASE_CLASSPATH: "/tmp/hbase-stackable/local/jars/hbase-gis-1.0.0.jar"
           hbase-site.xml:
             phoenix.log.saltBuckets: "2"
             hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
+            hbase.coprocessor.region.classes: "tech.stackable.gis.hbase.coprocessor.KNNEndpoint"
         replicas: 1
   regionServers:
     config:
@@ -116,9 +120,12 @@ spec:
     roleGroups:
       default:
         configOverrides:
+          hbase-env.sh:
+            HBASE_CLASSPATH: "/tmp/hbase-stackable/local/jars/hbase-gis-1.0.0.jar"
           hbase-site.xml:
             phoenix.log.saltBuckets: "2"
             hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
+            hbase.coprocessor.region.classes: "tech.stackable.gis.hbase.coprocessor.KNNEndpoint"
         replicas: 1
   restServers:
     config:
