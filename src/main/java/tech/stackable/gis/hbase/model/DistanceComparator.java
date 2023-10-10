@@ -8,7 +8,7 @@ import java.util.Comparator;
 public class DistanceComparator implements Comparator<QueryMatch> {
     static final Logger LOG = Logger.getLogger(DistanceComparator.class);
 
-    Point2D origin;
+    final Point2D origin;
 
     public DistanceComparator(double lon, double lat) {
         this.origin = new Point2D.Double(lon, lat);

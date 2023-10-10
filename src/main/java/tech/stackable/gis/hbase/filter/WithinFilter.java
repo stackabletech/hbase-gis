@@ -27,15 +27,13 @@ public class WithinFilter extends FilterBase {
     static final Log LOG = LogFactory.getLog(WithinFilter.class);
     static private final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
     private final Geometry query;
-    private final byte[] table;
     private final byte[] family;
     private final byte[] lat_col;
     private final byte[] lon_col;
     protected boolean exclude = false;
 
-    public WithinFilter(final Geometry query, byte[] table, byte[] family, byte[] latCol, byte[] lonCol) {
+    public WithinFilter(final Geometry query, byte[] family, byte[] latCol, byte[] lonCol) {
         this.query = query;
-        this.table = table;
         this.family = family;
         this.lat_col = latCol;
         this.lon_col = lonCol;
@@ -101,7 +99,7 @@ public class WithinFilter extends FilterBase {
             final FilterProtos.WithinFilter proto = FilterProtos.WithinFilter.parseFrom(pbBytes);
             final WKTReader reader = new WKTReader(GEOMETRY_FACTORY);
             return new WithinFilter(reader.read(proto.getQuery().toStringUtf8()),
-                    proto.getTable().toByteArray(), proto.getFamily().toByteArray(), proto.getLatCol().toByteArray(), proto.getLonCol().toByteArray());
+                    proto.getFamily().toByteArray(), proto.getLatCol().toByteArray(), proto.getLonCol().toByteArray());
         } catch (InvalidProtocolBufferException | ParseException e) {
             throw new DeserializationException(e);
         }
@@ -118,7 +116,6 @@ public class WithinFilter extends FilterBase {
         final FilterProtos.WithinFilter.Builder builder = FilterProtos.WithinFilter.newBuilder();
         try {
             return builder.setQuery(ByteString.copyFrom(writer.write(this.query), "utf8"))
-                    .setTable(ByteString.copyFrom(table))
                     .setFamily(ByteString.copyFrom(family))
                     .setLatCol(ByteString.copyFrom(lat_col))
                     .setLonCol(ByteString.copyFrom(lon_col))
@@ -136,22 +133,21 @@ public class WithinFilter extends FilterBase {
      * @return A coordinate value or Double.NaN in case if an error.
      */
     final Double parseCoordinate(final Cell cell) {
-        byte[] value = null;
-        int offset = 0;
-        int len = 0;
+        byte[] value;
+        int offset;
+        int len;
         if (cell instanceof ByteBufferExtendedCell) {
             value = ((ByteBufferExtendedCell) cell).getValueByteBuffer().array();
             offset = ((ByteBufferExtendedCell) cell).getValuePosition();
-            len = cell.getValueLength();
         } else {
             value = cell.getValueArray();
             offset = cell.getValueOffset();
-            len = cell.getValueLength();
         }
+        len = cell.getValueLength();
         try {
             return Double.parseDouble(Bytes.toString(value, offset, len));
         } catch (NumberFormatException nfe) {
-            LOG.error(String.format("Failed to parse coordinate for key " + CellUtil.getCellKeyAsString(cell)));
+            LOG.error("Failed to parse coordinate for key " + CellUtil.getCellKeyAsString(cell));
         }
         return Double.NaN;
     }

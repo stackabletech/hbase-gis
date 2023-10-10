@@ -1,0 +1,29 @@
+syntax = "proto2";
+
+option java_package = "tech.stackable.gis.hbase.generated";
+option java_outer_classname = "TopX";
+option java_generic_services = true;
+option java_generate_equals_and_hash = true;
+option optimize_for = SPEED;
+
+message TopXRequest {
+  optional int32 count = 1;
+  optional bytes family = 2;
+  optional bytes reference_col = 3;
+  optional bytes timestamp_col = 4;
+}
+
+message TopXResponse {
+  repeated Candidate candidates = 1;
+}
+
+message Candidate {
+  optional bytes key = 1;
+  optional bytes reference = 2;
+  optional double timestamp = 3;
+}
+
+service TopXService {
+  rpc getTopX(TopXRequest)
+      returns (TopXResponse);
+}

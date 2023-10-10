@@ -76,7 +76,7 @@ public class TestWithinFilter extends AbstractTestUtil {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_A, "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, FAMILY_A, "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
         List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_A, COLUMNS_SCAN);
         assertEquals(26, results.size());
@@ -92,7 +92,7 @@ public class TestWithinFilter extends AbstractTestUtil {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_A, "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, FAMILY_A, "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
         List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_A, COLUMNS_SCAN);
         assertEquals(10, results.size());
@@ -115,7 +115,7 @@ public class TestWithinFilter extends AbstractTestUtil {
                 "0.0 0.0))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_B, "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, FAMILY_B, "lat".getBytes(), "lon".getBytes());
         Filter filters = new FilterList(withinFilter);
         List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_B, COLUMNS_RECTANGLE_CHECK);
         // excludes points lying on the polygon itself
@@ -128,7 +128,7 @@ public class TestWithinFilter extends AbstractTestUtil {
                 "3.0001 0.0," +
                 "0.0 0.0))";
         query = reader.read(polygon);
-        withinFilter = new WithinFilter(query, "wifi".getBytes(), FAMILY_B, "lat".getBytes(), "lon".getBytes());
+        withinFilter = new WithinFilter(query, FAMILY_B, "lat".getBytes(), "lon".getBytes());
         filters = new FilterList(withinFilter);
         results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_B, COLUMNS_RECTANGLE_CHECK);
         assertEquals(3, results.size());

@@ -64,7 +64,7 @@ public class Ingest {
             while ((line = reader.readLine()) != null) {
                 COLS.reset();
                 Iterator<String> vals = SPLITTER.split(line).iterator();
-                Map<String, String> row = new HashMap<String, String>(COLUMNS.length);
+                Map<String, String> row = new HashMap<>(COLUMNS.length);
 
                 while (vals.hasNext() && COLS.hasNext()) {
                     String col = (String) COLS.next();
@@ -93,9 +93,8 @@ public class Ingest {
         }
 
         long end = System.currentTimeMillis();
-        System.out.println(
-                String.format("Geohashed %s records in %sms.",
-                        records, end - start));
+        System.out.printf("Geohashed %s records in %sms.%n",
+                records, end - start);
 
     }
 }
