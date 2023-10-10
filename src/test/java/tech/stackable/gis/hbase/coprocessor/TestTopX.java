@@ -2,15 +2,21 @@ package tech.stackable.gis.hbase.coprocessor;
 
 import com.google.common.base.Splitter;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Message;
+import com.google.protobuf.RpcController;
 import org.apache.commons.collections.iterators.ArrayIterator;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.RegionCoprocessorServiceExec;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessor;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
+import org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -52,7 +58,7 @@ public class TestTopX {
     @BeforeClass
     public static void before() throws Exception {
         HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(TABLE));
-        htd.addCoprocessor("");
+        htd.addCoprocessor(""); // tech.stackable.gis.hbase.coprocessor.TopXEndpoint
         HColumnDescriptor family_a = new HColumnDescriptor(FAMILY).setVersions(100, 100);
         htd.addFamily(family_a);
         HRegionInfo info = new HRegionInfo(htd.getTableName(), null, null, false);
@@ -123,19 +129,8 @@ public class TestTopX {
     }
 
     @Test
-    /*
-    See https://github.com/apache/hbase/blob/rel/2.4.12/hbase-server/src/test/java/org/apache/hadoop/hbase/coprocessor/TestCoprocessorInterface.java#L381
-     */
-    public void testTopXSingleRegion() throws Exception {
-        Configuration conf = TEST_UTIL.getConfiguration();
-        RegionCoprocessorHost host = new RegionCoprocessorHost(REGION, Mockito.mock(RegionServerServices.class), conf);
-        REGION.setCoprocessorHost(host);
-        host.load(TopXEndpoint.class.asSubclass(RegionCoprocessor.class), Coprocessor.PRIORITY_USER, conf);
-        host.preOpen();
-        host.postOpen();
-
-        assertNotNull(host.findCoprocessor(TopXEndpoint.class.getName()));
-        TopXEndpoint endpoint = REGION.getCoprocessorHost().findCoprocessor(TopXEndpoint.class);
+    public void testSingleRegionViaCallback() throws Exception {
+        TopXEndpoint endpoint = registeredEndpoint();
 
         TopX.TopXResponse response = getTopXResponse(endpoint, 2);
         LOG.info("Unique references [{}]", response.getCandidatesCount());
@@ -156,17 +151,63 @@ public class TestTopX {
         assertEquals(141, count);
     }
 
+    @Test
+    public void testSingleRegionViaService() throws Exception {
+        TopXEndpoint endpoint = registeredEndpoint();
+
+        REGION.registerService(endpoint.getService());
+        Descriptors.MethodDescriptor method = endpoint.getDescriptorForType().findMethodByName("getTopX");
+
+        RegionCoprocessorServiceExec exec = new RegionCoprocessorServiceExec(
+                REGION.getRegionInfo().getRegionName(),
+                "".getBytes(),
+                method,
+                endpoint.getRequestPrototype(method));
+
+        ClientProtos.CoprocessorServiceCall.Builder cpBuilder = ClientProtos.CoprocessorServiceCall.newBuilder();
+        TopX.TopXRequest request = getRequest(2);
+
+        org.apache.hbase.thirdparty.com.google.protobuf.ByteString value =
+                org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations
+                        .unsafeWrap(request.toByteArray());
+
+        cpBuilder.setRow(UnsafeByteOperations.unsafeWrap(exec.getRow()))
+                .setServiceName(exec.getMethod().getService().getFullName())
+                .setMethodName(exec.getMethod().getName()).setRequest(value);
+
+        Message result = REGION.execService(Mockito.mock(RpcController.class), cpBuilder.build());
+        assertEquals(207, ((TopX.TopXResponse) result).getCandidatesCount());
+    }
+
+    /*
+    See https://github.com/apache/hbase/blob/rel/2.4.12/hbase-server/src/test/java/org/apache/hadoop/hbase/coprocessor/TestCoprocessorInterface.java#L381
+    */
+    private TopXEndpoint registeredEndpoint() throws IOException {
+        Configuration conf = TEST_UTIL.getConfiguration();
+        RegionCoprocessorHost host = new RegionCoprocessorHost(REGION, Mockito.mock(RegionServerServices.class), conf);
+        REGION.setCoprocessorHost(host);
+        host.load(TopXEndpoint.class.asSubclass(RegionCoprocessor.class), Coprocessor.PRIORITY_USER, conf);
+        host.preOpen();
+        host.postOpen();
+
+        assertNotNull(host.findCoprocessor(TopXEndpoint.class.getName()));
+        return REGION.getCoprocessorHost().findCoprocessor(TopXEndpoint.class);
+    }
+
     private TopX.TopXResponse getTopXResponse(TopXEndpoint endpoint, int topX) throws IOException {
-        TopX.TopXRequest request = TopX.TopXRequest.newBuilder()
+        TopX.TopXRequest request = getRequest(topX);
+
+        BlockingRpcCallback<TopX.TopXResponse> rpcCallback = new BlockingRpcCallback<>();
+        endpoint.getTopX(null, request, rpcCallback);
+        return rpcCallback.get();
+    }
+
+    private TopX.TopXRequest getRequest(int topX) {
+        return TopX.TopXRequest.newBuilder()
                 .setCount(topX)
                 .setFamily(ByteString.copyFrom(FAMILY))
                 .setReferenceCol(ByteString.copyFrom("pu_id".getBytes()))
                 .setTimestampCol(ByteString.copyFrom("pu_ts".getBytes()))
                 .build();
-
-        BlockingRpcCallback<TopX.TopXResponse> rpcCallback = new BlockingRpcCallback<>();
-        endpoint.getTopX(null, request, rpcCallback);
-        TopX.TopXResponse response = rpcCallback.get();
-        return response;
     }
 }
