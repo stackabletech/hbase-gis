@@ -24,6 +24,7 @@ import tech.stackable.gis.hbase.generated.KNN;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, CoprocessorService {
@@ -34,6 +35,11 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
     @Override
     public Service getService() {
         return this;
+    }
+
+    @Override
+    public Iterable<Service> getServices() {
+        return Collections.singletonList(this);
     }
 
     @Override
