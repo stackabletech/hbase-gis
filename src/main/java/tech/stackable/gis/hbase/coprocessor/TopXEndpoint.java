@@ -1,6 +1,5 @@
 package tech.stackable.gis.hbase.coprocessor;
 
-import com.google.common.base.Charsets;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
@@ -22,10 +21,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import tech.stackable.gis.hbase.generated.TopX;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 public class TopXEndpoint extends TopX.TopXService implements RegionCoprocessor, CoprocessorService {
@@ -40,9 +36,7 @@ public class TopXEndpoint extends TopX.TopXService implements RegionCoprocessor,
 
     @Override
     public Iterable<Service> getServices() {
-        List<Service> services = Lists.newArrayList();
-        services.add(this);
-        return services;
+        return Collections.singleton(this);
     }
 
     @Override
@@ -106,8 +100,8 @@ public class TopXEndpoint extends TopX.TopXService implements RegionCoprocessor,
 
             for (Map.Entry<String, TopXQueue> itemQueue : uniqueVals.entrySet()) {
                 for (Item item : itemQueue.getValue()) {
-                    resBuilder.addCandidates(TopX.Candidate.newBuilder().setKey(ByteString.copyFrom(itemQueue.getKey(), Charsets.UTF_8))
-                            .setReference(ByteString.copyFrom(item.item, Charsets.UTF_8))
+                    resBuilder.addCandidates(TopX.Candidate.newBuilder().setKey(ByteString.copyFrom(itemQueue.getKey(), "utf8"))
+                            .setReference(ByteString.copyFrom(item.item, "utf8"))
                             .setTimestamp(item.timestamp));
                 }
             }

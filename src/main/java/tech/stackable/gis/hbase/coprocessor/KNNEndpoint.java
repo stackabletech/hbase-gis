@@ -1,6 +1,5 @@
 package tech.stackable.gis.hbase.coprocessor;
 
-import com.google.common.base.Charsets;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
@@ -39,7 +38,7 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
 
     @Override
     public Iterable<Service> getServices() {
-        return Collections.singletonList(this);
+        return Collections.singleton(this);
     }
 
     @Override
@@ -98,7 +97,7 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
             // build the result
             var resBuilder = KNN.KNNResponse.newBuilder();
             for (Neighbor neighbor : knns) {
-                resBuilder.addPoints(KNN.Point.newBuilder().setKey(ByteString.copyFrom(neighbor.key, Charsets.UTF_8))
+                resBuilder.addPoints(KNN.Point.newBuilder().setKey(ByteString.copyFrom(neighbor.key, "utf8"))
                         .setLat(neighbor.lat)
                         .setLon(neighbor.lon)
                         .setDistance(distComp.distance(neighbor)));
