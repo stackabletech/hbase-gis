@@ -81,6 +81,7 @@ data:
     log4j.logger.tech.stackable.gis.hbase.filter=DEBUG
     log4j.logger.org.apache.hadoop.hbase.filter=DEBUG;
     log4j.logger.org.apache.hadoop.hbase.regionserver.HRegion=DEBUG;
+    log4j.logger.org.apache.hadoop.hbase.tool.coprocessor.CoprocessorValidator=DEBUG;
 ---
 apiVersion: hbase.stackable.tech/v1alpha1
 kind: HbaseCluster
@@ -107,7 +108,7 @@ spec:
           hbase-site.xml:
             phoenix.log.saltBuckets: "2"
             hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
-            hbase.coprocessor.region.classes: "tech.stackable.gis.hbase.coprocessor.KNNEndpoint"
+            hbase.coprocessor.region.classes: "tech.stackable.gis.hbase.coprocessor.TopXEndpoint,tech.stackable.gis.hbase.coprocessor.KNNEndpoint"
         replicas: 1
   regionServers:
     config:
@@ -125,7 +126,7 @@ spec:
           hbase-site.xml:
             phoenix.log.saltBuckets: "2"
             hbase.regionserver.wal.codec: "org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec"
-            hbase.coprocessor.region.classes: "tech.stackable.gis.hbase.coprocessor.KNNEndpoint"
+            hbase.coprocessor.region.classes: "tech.stackable.gis.hbase.coprocessor.TopXEndpoint,tech.stackable.gis.hbase.coprocessor.KNNEndpoint"
         replicas: 1
   restServers:
     config:
