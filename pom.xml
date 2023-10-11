@@ -15,7 +15,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <version.hbase>2.4.12</version.hbase>
-        <version.hbase.protobuf>2.5.0</version.hbase.protobuf>
+        <version.hbase.protobuf>3.16.3</version.hbase.protobuf>
         <slf4j.version>1.7.33</slf4j.version>
     </properties>
 
