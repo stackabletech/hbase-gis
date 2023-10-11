@@ -15,8 +15,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <version.hbase>2.4.12</version.hbase>
-        <!-- version.hbase.protobuf>3.17.3</version.hbase.protobuf -->
         <version.hbase.protobuf>2.5.0</version.hbase.protobuf>
+        <slf4j.version>1.7.33</slf4j.version>
     </properties>
 
     <build>
@@ -152,6 +152,11 @@
                     <artifactId>xercesImpl</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

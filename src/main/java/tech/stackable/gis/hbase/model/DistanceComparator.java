@@ -1,12 +1,13 @@
 package tech.stackable.gis.hbase.model;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.geom.Point2D;
 import java.util.Comparator;
 
 public class DistanceComparator implements Comparator<QueryMatch> {
-    static final Logger LOG = Logger.getLogger(DistanceComparator.class);
+    static final Logger LOG = LoggerFactory.getLogger(DistanceComparator.class);
 
     final Point2D origin;
 
