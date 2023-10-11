@@ -70,8 +70,8 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
 
         KNN.KNNResponse response = null;
         InternalScanner scanner = null;
-        final var distComp = new DistComp(request.getLat(), request.getLon());
-        final MinMaxPriorityQueue<Neighbor> knns = MinMaxPriorityQueue.orderedBy(distComp).maximumSize(count).create();
+        final var distComp = new DistComp(request.getLon(), request.getLat());
+        final MinMaxPriorityQueue<Neighbor> knn = MinMaxPriorityQueue.orderedBy(distComp).maximumSize(count).create();
         try {
             scanner = env.getRegion().getScanner(scan);
             List<Cell> results = new ArrayList<>();
@@ -88,7 +88,11 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
                         lat = parseCoordinate(cell);
 
                     if (!Double.isNaN(lat) && !Double.isNaN(lon)) {
-                        knns.add(new Neighbor(Bytes.toString(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength()), lat, lon));
+                        double distance = distComp.distance(lon, lat);
+                        if (knn.size() < count || distComp.distance(lon, lat) < knn.peekLast().distance) {
+                            knn.add(new Neighbor(Bytes.toString(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength()),
+                                    lon, lat, distance));
+                        }
                     }
                 }
                 results.clear();
@@ -96,11 +100,11 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
 
             // build the result
             var resBuilder = KNN.KNNResponse.newBuilder();
-            for (Neighbor neighbor : knns) {
+            for (Neighbor neighbor : knn) {
                 resBuilder.addPoints(KNN.Point.newBuilder().setKey(ByteString.copyFrom(neighbor.key, "utf8"))
-                        .setLat(neighbor.lat)
                         .setLon(neighbor.lon)
-                        .setDistance(distComp.distance(neighbor)));
+                        .setLat(neighbor.lat)
+                        .setDistance(neighbor.distance));
             }
             response = resBuilder.build();
         } catch (IOException ioe) {

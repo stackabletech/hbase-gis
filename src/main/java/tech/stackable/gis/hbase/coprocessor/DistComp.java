@@ -10,7 +10,7 @@ public class DistComp implements Comparator<Neighbor> {
     static final Log LOG = LogFactory.getLog(DistComp.class);
     private final Point2D origin;
 
-    public DistComp(double lat, double lon) {
+    public DistComp(double lon, double lat) {
         this.origin = new Point2D.Double(lon, lat);
     }
 
@@ -23,7 +23,7 @@ public class DistComp implements Comparator<Neighbor> {
         return Double.compare(o1Distance, o2Distance);
     }
 
-    public double distance(Neighbor neighbor) {
-        return origin.distance(neighbor.lon, neighbor.lat);
+    public double distance(double lon, double lat) {
+        return origin.distance(lon, lat);
     }
 }

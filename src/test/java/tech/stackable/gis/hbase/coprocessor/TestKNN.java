@@ -86,7 +86,7 @@ public class TestKNN extends AbstractTestUtil {
 
         // compare to the dataset
         List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_A, COLUMNS_SCAN);
-        final var distComp = new DistComp(latArg, lonArg);
+        final var distComp = new DistComp(lonArg, latArg);
         Set<Double> distances = Sets.newTreeSet();
         Set<Double> neighbourDistances = Sets.newTreeSet();
 
@@ -94,7 +94,7 @@ public class TestKNN extends AbstractTestUtil {
             neighbourDistances.add(neighbour.getDistance());
         }
         for (QueryMatch result : results) {
-            distances.add(distComp.distance(new Neighbor(result.id, result.lat, result.lon)));
+            distances.add(distComp.distance(result.lon, result.lat));
         }
         Iterator<Double> iterator = distances.iterator();
         // compare both sets of top-X
