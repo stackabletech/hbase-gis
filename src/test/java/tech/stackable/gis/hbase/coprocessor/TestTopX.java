@@ -55,6 +55,8 @@ public class TestTopX {
             .limit(COLUMNS.length);
     protected static int TRIP_COUNT;
 
+    private static TopXEndpoint ENDPOINT;
+
     @BeforeClass
     public static void before() throws Exception {
         HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(TABLE));
@@ -67,6 +69,9 @@ public class TestTopX {
                 TEST_UTIL.getConfiguration(), htd);
 
         load_taxi_data();
+        // This needs to be done only once per test instance to avoid errors like:
+        //    15:48:36 ERROR regionserver.HRegion: Coprocessor service TopXService already registered, rejecting request from tech.stackable.gis.hbase.coprocessor.TopXEndpoint@707e4fe4 in region TestTopX,,1697032115102.364f367eef8867e97dff86fbd52a42fb.
+        ENDPOINT = registeredEndpoint();
     }
 
     protected static void load_taxi_data() throws IOException {
@@ -130,14 +135,13 @@ public class TestTopX {
 
     @Test
     public void testSingleRegionViaCallback() throws Exception {
-        TopXEndpoint endpoint = registeredEndpoint();
 
-        TopX.TopXResponse response = getTopXResponse(endpoint, 2);
+        TopX.TopXResponse response = getTopXResponse(ENDPOINT, 2);
         LOG.info("Unique references [{}]", response.getCandidatesCount());
         assertEquals(207, response.getCandidatesCount());
 
         // return all rows, should match number imported
-        response = getTopXResponse(endpoint, TRIP_COUNT);
+        response = getTopXResponse(ENDPOINT, TRIP_COUNT);
         LOG.info("Unique references [{}]", response.getCandidatesCount());
         assertEquals(TRIP_COUNT, response.getCandidatesCount());
 
@@ -153,16 +157,13 @@ public class TestTopX {
 
     @Test
     public void testSingleRegionViaService() throws Exception {
-        TopXEndpoint endpoint = registeredEndpoint();
-
-        REGION.registerService(endpoint.getService());
-        Descriptors.MethodDescriptor method = endpoint.getDescriptorForType().findMethodByName("getTopX");
+        Descriptors.MethodDescriptor method = ENDPOINT.getDescriptorForType().findMethodByName("getTopX");
 
         RegionCoprocessorServiceExec exec = new RegionCoprocessorServiceExec(
                 REGION.getRegionInfo().getRegionName(),
                 "".getBytes(),
                 method,
-                endpoint.getRequestPrototype(method));
+                ENDPOINT.getRequestPrototype(method));
 
         ClientProtos.CoprocessorServiceCall.Builder cpBuilder = ClientProtos.CoprocessorServiceCall.newBuilder();
         TopX.TopXRequest request = getRequest(2);
@@ -182,7 +183,7 @@ public class TestTopX {
     /*
     See https://github.com/apache/hbase/blob/rel/2.4.12/hbase-server/src/test/java/org/apache/hadoop/hbase/coprocessor/TestCoprocessorInterface.java#L381
     */
-    private TopXEndpoint registeredEndpoint() throws IOException {
+    private static TopXEndpoint registeredEndpoint() throws IOException {
         Configuration conf = TEST_UTIL.getConfiguration();
         RegionCoprocessorHost host = new RegionCoprocessorHost(REGION, Mockito.mock(RegionServerServices.class), conf);
         REGION.setCoprocessorHost(host);
