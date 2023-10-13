@@ -91,7 +91,7 @@ public class WithinFilter extends FilterBase {
 
             final Coordinate coord = new Coordinate(cell_lon.get(), cell_lat.get());
             final Geometry point = GEOMETRY_FACTORY.createPoint(coord);
-            final boolean isWithin = !query.contains(point);
+            final boolean isWithin = !query.covers(point);
             if (LOG.isDebugEnabled())
                 LOG.debug(String.format("row key=%s, lat=%f, lon=%f, filter applied=%s", rowKey(cell),
                         cell_lat.get(), cell_lon.get(),
