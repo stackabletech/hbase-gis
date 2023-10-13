@@ -72,7 +72,7 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
         InternalScanner scanner = null;
         final var distComp = new DistComp(request.getLon(), request.getLat());
         // TODO replace with blocking priority queue and keep count of items and look up max value
-        final MinMaxPriorityQueue<Neighbor> knn = MinMaxPriorityQueue.orderedBy(distComp).maximumSize(count).create();
+        final MinMaxPriorityQueue<KNN.Point> knn = MinMaxPriorityQueue.orderedBy(distComp).maximumSize(count).create();
         try {
             scanner = env.getRegion().getScanner(scan);
             List<Cell> results = new ArrayList<>();
@@ -90,24 +90,18 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
 
                     if (!Double.isNaN(lat) && !Double.isNaN(lon)) {
                         double distance = distComp.distance(lon, lat);
-                        if (knn.size() < count || distComp.distance(lon, lat) < knn.peekLast().distance) {
-                            knn.add(new Neighbor(Bytes.toString(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength()),
-                                    lon, lat, distance));
+                        if (knn.size() < count || distComp.distance(lon, lat) < knn.peekLast().getDistance()) {
+                            knn.add(KNN.Point.newBuilder().setKey(ByteString.copyFromUtf8(Bytes.toString(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength())))
+                                    .setLon(lon)
+                                    .setLat(lat)
+                                    .setDistance(distance).build());
                         }
                     }
                 }
                 results.clear();
             } while (hasMore);
 
-            // build the result
-            var resBuilder = KNN.KNNResponse.newBuilder();
-            for (Neighbor neighbor : knn) {
-                resBuilder.addPoints(KNN.Point.newBuilder().setKey(ByteString.copyFrom(neighbor.key, "utf8"))
-                        .setLon(neighbor.lon)
-                        .setLat(neighbor.lat)
-                        .setDistance(neighbor.distance));
-            }
-            response = resBuilder.build();
+            response = KNN.KNNResponse.newBuilder().addAllPoints(knn).build();
         } catch (IOException ioe) {
             ResponseConverter.setControllerException(controller, ioe);
         } finally {
