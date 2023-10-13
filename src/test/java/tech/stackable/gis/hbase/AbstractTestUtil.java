@@ -63,8 +63,8 @@ public class AbstractTestUtil {
                     row.put(col, val);
                 }
 
-                double lat = Double.parseDouble(row.get("lat"));
                 double lon = Double.parseDouble(row.get("lon"));
+                double lat = Double.parseDouble(row.get("lat"));
                 String rowkey = GeoHash.withCharacterPrecision(lat, lon, 12).toBase32();
                 // ignore duplicates
                 if (!uniqueKeys.contains(rowkey)) {

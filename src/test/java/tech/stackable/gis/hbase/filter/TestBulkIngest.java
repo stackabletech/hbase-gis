@@ -1,7 +1,6 @@
 package tech.stackable.gis.hbase.filter;
 
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.io.WKTReader;
+
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.filter.Filter;
@@ -9,6 +8,8 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.io.WKTReader;
 import tech.stackable.gis.hbase.AbstractTestUtil;
 import tech.stackable.gis.hbase.BulkIngest;
 import tech.stackable.gis.hbase.model.QueryMatch;
@@ -71,7 +72,7 @@ public class TestBulkIngest extends AbstractTestUtil {
                 "-76.0 44.0))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, FAMILY, "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, FAMILY, "lon".getBytes(), "lat".getBytes());
         Filter filters = new FilterList(withinFilter);
         List<QueryMatch> filtered = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_SCAN);
         assertEquals(row_count, filtered.size());

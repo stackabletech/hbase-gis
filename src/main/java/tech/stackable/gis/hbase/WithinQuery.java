@@ -2,12 +2,6 @@ package tech.stackable.gis.hbase;
 
 import ch.hsr.geohash.BoundingBox;
 import ch.hsr.geohash.GeoHash;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKTReader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
@@ -15,6 +9,12 @@ import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKTReader;
 import tech.stackable.gis.hbase.filter.WithinFilter;
 import tech.stackable.gis.hbase.model.QueryMatch;
 
@@ -86,12 +86,12 @@ public class WithinQuery {
                     precision);
 
             candidateGeom = convexHull(new GeoHash[]{candidate});
-            if (candidateGeom.contains(query)) {
+            if (candidateGeom.covers(query)) {
                 return new GeoHash[]{candidate};
             }
 
             candidateGeom = convexHull(candidate.getAdjacent());
-            if (candidateGeom.contains(query)) {
+            if (candidateGeom.covers(query)) {
                 GeoHash[] ret = Arrays.copyOf(candidate.getAdjacent(), 9);
                 ret[8] = candidate;
                 return ret;
@@ -133,7 +133,7 @@ public class WithinQuery {
             QueryMatch candidate = iter.next();
             Coordinate coord = new Coordinate(candidate.lon, candidate.lat);
             Geometry point = factory.createPoint(coord);
-            if (!query.contains(point)) {
+            if (!query.covers(point)) {
                 iter.remove();
                 exclusionCount++;
             }

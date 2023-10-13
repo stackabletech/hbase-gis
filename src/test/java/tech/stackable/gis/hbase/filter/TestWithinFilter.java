@@ -1,7 +1,5 @@
 package tech.stackable.gis.hbase.filter;
 
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.io.WKTReader;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Put;
@@ -10,6 +8,8 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.io.WKTReader;
 import tech.stackable.gis.hbase.AbstractTestUtil;
 import tech.stackable.gis.hbase.model.QueryMatch;
 
@@ -76,7 +76,7 @@ public class TestWithinFilter extends AbstractTestUtil {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, FAMILY_A, "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, FAMILY_A, "lon".getBytes(), "lat".getBytes());
         Filter filters = new FilterList(withinFilter);
         List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_A, COLUMNS_SCAN);
         assertEquals(26, results.size());
@@ -92,7 +92,7 @@ public class TestWithinFilter extends AbstractTestUtil {
                 "-73.980844 40.758703))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, FAMILY_A, "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, FAMILY_A, "lon".getBytes(), "lat".getBytes());
         Filter filters = new FilterList(withinFilter);
         List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_A, COLUMNS_SCAN);
         assertEquals(10, results.size());
@@ -109,26 +109,26 @@ public class TestWithinFilter extends AbstractTestUtil {
         WKTReader reader = new WKTReader();
 
         String polygon = "POLYGON ((0.0 0.0, " +
-                "0.0 3.0, " +
-                "3.0 3.0, " +
-                "3.0 0.0," +
+                "0.0 2.999, " +
+                "2.999 2.999, " +
+                "2.999 0.0," +
                 "0.0 0.0))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, FAMILY_B, "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, FAMILY_B, "lon".getBytes(), "lat".getBytes());
         Filter filters = new FilterList(withinFilter);
         List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_B, COLUMNS_RECTANGLE_CHECK);
         // excludes points lying on the polygon itself
         assertEquals(2, results.size());
 
-        // slightly extend polygon to catch the third point
+        // slightly extend polygon to catch the third point (as we are using .covers rather than .contains)
         polygon = "POLYGON ((0.0 0.0, " +
-                "0.0 3.0001, " +
-                "3.0001 3.0001, " +
-                "3.0001 0.0," +
+                "0.0 3.0, " +
+                "3.0 3.0, " +
+                "3.0 0.0," +
                 "0.0 0.0))";
         query = reader.read(polygon);
-        withinFilter = new WithinFilter(query, FAMILY_B, "lat".getBytes(), "lon".getBytes());
+        withinFilter = new WithinFilter(query, FAMILY_B, "lon".getBytes(), "lat".getBytes());
         filters = new FilterList(withinFilter);
         results = queryWithFilterAndRegionScanner(REGION, filters, FAMILY_B, COLUMNS_RECTANGLE_CHECK);
         assertEquals(3, results.size());

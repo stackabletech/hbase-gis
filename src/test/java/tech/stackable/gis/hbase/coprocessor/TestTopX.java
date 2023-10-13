@@ -1,10 +1,7 @@
 package tech.stackable.gis.hbase.coprocessor;
 
 import com.google.common.base.Splitter;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Message;
-import com.google.protobuf.RpcController;
+import com.google.protobuf.*;
 import org.apache.commons.collections.iterators.ArrayIterator;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
@@ -60,7 +57,7 @@ public class TestTopX {
     @BeforeClass
     public static void before() throws Exception {
         HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(TABLE));
-        htd.addCoprocessor(""); // tech.stackable.gis.hbase.coprocessor.TopXEndpoint
+        htd.addCoprocessor("");
         HColumnDescriptor family_a = new HColumnDescriptor(FAMILY).setVersions(100, 100);
         htd.addFamily(family_a);
         HRegionInfo info = new HRegionInfo(htd.getTableName(), null, null, false);
