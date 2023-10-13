@@ -16,11 +16,13 @@ import tech.stackable.gis.hbase.AbstractTestUtil;
 import tech.stackable.gis.hbase.generated.KNN;
 import tech.stackable.gis.hbase.model.QueryMatch;
 
+import java.awt.geom.Point2D;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class TestKNN extends AbstractTestUtil {
     private static final String TABLE = "TestKNN";
@@ -86,7 +88,7 @@ public class TestKNN extends AbstractTestUtil {
 
         // compare to the dataset
         List<QueryMatch> results = queryWithFilterAndRegionScanner(REGION, new FilterList(), FAMILY_A, COLUMNS_SCAN);
-        final var distComp = new DistComp(lonArg, latArg);
+        final var origin = new Point2D.Double(lonArg, latArg);
         Set<Double> distances = Sets.newTreeSet();
         Set<Double> neighbourDistances = Sets.newTreeSet();
 
@@ -94,7 +96,7 @@ public class TestKNN extends AbstractTestUtil {
             neighbourDistances.add(neighbour.getDistance());
         }
         for (QueryMatch result : results) {
-            distances.add(distComp.distance(result.lon, result.lat));
+            distances.add(origin.distance(result.lon, result.lat));
         }
         Iterator<Double> iterator = distances.iterator();
         // compare both sets of top-X

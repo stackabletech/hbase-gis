@@ -21,9 +21,11 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hbase.thirdparty.com.google.common.collect.MinMaxPriorityQueue;
 import tech.stackable.gis.hbase.generated.KNN;
 
+import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, CoprocessorService {
@@ -70,9 +72,9 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
 
         KNN.KNNResponse response = null;
         InternalScanner scanner = null;
-        final var distComp = new DistComp(request.getLon(), request.getLat());
+        final var origin = new Point2D.Double(request.getLon(), request.getLat());
         // TODO replace with blocking priority queue and keep count of items and look up max value
-        final MinMaxPriorityQueue<KNN.Point> knn = MinMaxPriorityQueue.orderedBy(distComp).maximumSize(count).create();
+        final MinMaxPriorityQueue<KNN.Point> knn = MinMaxPriorityQueue.orderedBy(Comparator.comparingDouble(KNN.Point::getDistance)).maximumSize(count).create();
         try {
             scanner = env.getRegion().getScanner(scan);
             List<Cell> results = new ArrayList<>();
@@ -89,8 +91,8 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
                         lat = parseCoordinate(cell);
 
                     if (!Double.isNaN(lat) && !Double.isNaN(lon)) {
-                        double distance = distComp.distance(lon, lat);
-                        if (knn.size() < count || distComp.distance(lon, lat) < knn.peekLast().getDistance()) {
+                        final double distance = origin.distance(lon, lat);
+                        if (knn.size() < count || distance < knn.peekLast().getDistance()) {
                             knn.add(KNN.Point.newBuilder().setKey(ByteString.copyFromUtf8(Bytes.toString(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength())))
                                     .setLon(lon)
                                     .setLat(lat)
