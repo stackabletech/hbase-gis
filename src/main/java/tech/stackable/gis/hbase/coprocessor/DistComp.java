@@ -16,11 +16,9 @@ public class DistComp implements Comparator<Neighbor> {
 
     @Override
     public int compare(Neighbor o1, Neighbor o2) {
-        final double o1Distance = origin.distance(o1.lon, o1.lat);
-        final double o2Distance = origin.distance(o2.lon, o2.lat);
-        if (o1Distance < 0 || o2Distance < 0)
+        if (o1.distance < 0 || o2.distance < 0)
             LOG.warn("negative distance detected!");
-        return Double.compare(o1Distance, o2Distance);
+        return Double.compare(o1.distance, o2.distance);
     }
 
     public double distance(double lon, double lat) {
