@@ -71,6 +71,7 @@ public class KNNEndpoint extends KNN.KNNService implements RegionCoprocessor, Co
         KNN.KNNResponse response = null;
         InternalScanner scanner = null;
         final var distComp = new DistComp(request.getLon(), request.getLat());
+        // TODO replace with blocking priority queue and keep count of items and look up max value
         final MinMaxPriorityQueue<Neighbor> knn = MinMaxPriorityQueue.orderedBy(distComp).maximumSize(count).create();
         try {
             scanner = env.getRegion().getScanner(scan);
