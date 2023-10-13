@@ -19,8 +19,9 @@ import org.apache.hadoop.hbase.filter.FilterBase;
 import org.apache.hadoop.hbase.util.Bytes;
 import tech.stackable.gis.hbase.shaded.protobuf.generated.FilterProtos;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.List;
+import java.util.Optional;
 
 public class WithinFilter extends FilterBase {
 
@@ -30,7 +31,12 @@ public class WithinFilter extends FilterBase {
     private final byte[] family;
     private final byte[] lat_col;
     private final byte[] lon_col;
-    protected boolean exclude = false;
+    // The longitude value parsed out of the column given by lon_col
+    // This value is reset at the the beginning of each row scan.
+    private Optional<Double> cell_lon = Optional.empty();
+    // The latitude value parsed out of the column given by lan_col
+    // This value is reset at the the beginning of each row scan.
+    private Optional<Double> cell_lat = Optional.empty();
 
     public WithinFilter(final Geometry query, byte[] family, byte[] latCol, byte[] lonCol) {
         this.query = query;
@@ -39,52 +45,61 @@ public class WithinFilter extends FilterBase {
         this.lon_col = lonCol;
     }
 
+    /**
+     * Speed up scanning by only looking at the relevant column family.
+     *
+     * @param name Column family name that is about to be scanned
+     * @return true if the name matches the {@link #family} field
+     * @throws IOException
+     */
     @Override
-    public boolean hasFilterRow() {
-        return true;
+    public boolean isFamilyEssential(byte[] name) throws IOException {
+        return Bytes.equals(name, this.family);
     }
 
+    /**
+     * Called at the beginning at every row scan.
+     *
+     * @throws IOException
+     */
     @Override
-    public void filterRowCells(List<Cell> kvs) {
-        double lon = Double.NaN;
-        double lat = Double.NaN;
-
-        if (null == kvs || 0 == kvs.size()) {
-            LOG.debug("skipping empty row.");
-            this.exclude = true;
-            return;
-        }
-
-        for (Cell cell : kvs) {
-            if (CellUtil.matchingColumn(cell, family, lon_col))
-                lon = parseCoordinate(cell);
-            if (CellUtil.matchingColumn(cell, family, lat_col))
-                lat = parseCoordinate(cell);
-        }
-
-        if (Double.isNaN(lat) || Double.isNaN(lon)) {
-            LOG.debug("Row is not a point.");
-            this.exclude = true;
-            return;
-        }
-
-        final Coordinate coord = new Coordinate(lon, lat);
-        Geometry point = GEOMETRY_FACTORY.createPoint(coord);
-        this.exclude = !query.contains(point);
-        if (LOG.isDebugEnabled())
-            LOG.debug(String.format("row key=%s, lat=%f, lon=%f, filter applied=%s", rowKey(kvs.get(0)),
-                    lat, lon,
-                    (this.exclude ? "rejecting" : "keeping")));
+    public void reset() throws IOException {
+        cell_lat = cell_lon = Optional.empty();
     }
 
+    /**
+     * Called for each cell in the row but with shortcuts:
+     * - stops scanning the row cells if a decision regarding the row can be made
+     * - only scans cells of the "essential" family
+     *
+     * @param cell the Cell in question
+     * @return See {@link org.apache.hadoop.hbase.filter.Filter.ReturnCode}
+     * @throws IOException
+     */
     @Override
-    public boolean filterRow() {
-        return this.exclude;
-    }
+    public ReturnCode filterCell(Cell cell) throws IOException {
+        if (CellUtil.matchingColumn(cell, family, lon_col))
+            cell_lon = Optional.of(parseCoordinate(cell));
+        if (CellUtil.matchingColumn(cell, family, lat_col))
+            cell_lat = Optional.of(parseCoordinate(cell));
 
-    @Override
-    public void reset() {
-        this.exclude = false;
+        if (cell_lat.isPresent() && cell_lon.isPresent()) {
+            if (Double.isNaN(cell_lat.get()) || Double.isNaN(cell_lon.get())) {
+                LOG.debug("Either lat or lon are NaN");
+                return ReturnCode.NEXT_ROW;
+            }
+
+            final Coordinate coord = new Coordinate(cell_lon.get(), cell_lat.get());
+            final Geometry point = GEOMETRY_FACTORY.createPoint(coord);
+            final boolean isWithin = !query.contains(point);
+            if (LOG.isDebugEnabled())
+                LOG.debug(String.format("row key=%s, lat=%f, lon=%f, filter applied=%s", rowKey(cell),
+                        cell_lat.get(), cell_lon.get(),
+                        (isWithin ? "rejecting" : "keeping")));
+            return isWithin ?
+                    ReturnCode.SKIP : ReturnCode.INCLUDE;
+        }
+        return ReturnCode.NEXT_COL;
     }
 
     /**
