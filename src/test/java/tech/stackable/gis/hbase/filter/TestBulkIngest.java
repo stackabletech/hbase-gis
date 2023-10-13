@@ -72,7 +72,7 @@ public class TestBulkIngest extends AbstractTestUtil {
                 "-76.0 44.0))";
 
         Geometry query = reader.read(polygon);
-        Filter withinFilter = new WithinFilter(query, FAMILY, "lat".getBytes(), "lon".getBytes());
+        Filter withinFilter = new WithinFilter(query, FAMILY, "lon".getBytes(), "lat".getBytes());
         Filter filters = new FilterList(withinFilter);
         List<QueryMatch> filtered = queryWithFilterAndRegionScanner(REGION, filters, FAMILY, COLUMNS_SCAN);
         assertEquals(row_count, filtered.size());
