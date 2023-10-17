@@ -20,7 +20,7 @@ message TopXResponse {
 message Candidate {
   optional bytes key = 1;
   optional bytes reference = 2;
-  optional double timestamp = 3;
+  optional int64 timestamp = 3;
 }
 
 service TopXService {

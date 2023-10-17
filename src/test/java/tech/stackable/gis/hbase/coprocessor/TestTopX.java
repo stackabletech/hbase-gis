@@ -145,7 +145,7 @@ public class TestTopX {
         // check a specific key
         int count = 0;
         for (TopX.Candidate candidate : response.getCandidatesList()) {
-            if (Integer.parseInt(new String(candidate.getKey().toByteArray())) == 68) {
+            if (Integer.parseInt(new String(candidate.getReference().toByteArray())) == 68) {
                 count++;
             }
         }

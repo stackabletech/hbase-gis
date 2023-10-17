@@ -17,6 +17,8 @@ import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.shaded.protobuf.ResponseConverter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hbase.thirdparty.com.google.common.collect.MinMaxPriorityQueue;
+import tech.stackable.gis.hbase.generated.KNN;
 import tech.stackable.gis.hbase.generated.TopX;
 
 import java.io.IOException;
@@ -65,8 +67,9 @@ public class TopXEndpoint extends TopX.TopXService implements RegionCoprocessor,
         scan.addColumn(family, tsCol);
         scan.readVersions(1);
 
-        Map<String, TopXQueue> uniqueVals = new HashMap<>();
+        Map<String, MinMaxPriorityQueue<TopX.Candidate>> uniqueVals = new HashMap<>();
         TopX.TopXResponse response = null;
+
         try (InternalScanner scanner = env.getRegion().getScanner(scan)) {
             List<Cell> results = new ArrayList<>();
             boolean hasMore;
@@ -84,10 +87,20 @@ public class TopXEndpoint extends TopX.TopXService implements RegionCoprocessor,
                     }
                     if (ref != null && ts != null) {
                         if (!uniqueVals.containsKey(ref)) {
-                            uniqueVals.put(ref, new TopXQueue(count));
+                            uniqueVals.put(ref, MinMaxPriorityQueue
+                                    .orderedBy(Comparator.comparingLong(TopX.Candidate::getTimestamp))
+                                    .maximumSize(count)
+                                    .create());
                         }
-                        TopXQueue cachedItems = uniqueVals.get(ref);
-                        cachedItems.add(new Item(CellUtil.getCellKeyAsString(cell), ref, ts));
+                        MinMaxPriorityQueue<TopX.Candidate> cachedItems = uniqueVals.get(ref);
+                        if (cachedItems.size() < count || ts < cachedItems.peekLast().getTimestamp()) {
+                            cachedItems.add(
+                                    TopX.Candidate.newBuilder()
+                                            .setKey(ByteString.copyFromUtf8(CellUtil.getCellKeyAsString(cell)))
+                                            .setReference(ByteString.copyFromUtf8(ref))
+                                            .setTimestamp(ts)
+                                            .build());
+                        }
                     }
                 }
                 results.clear();
@@ -96,18 +109,12 @@ public class TopXEndpoint extends TopX.TopXService implements RegionCoprocessor,
             LOG.info(String.format("Retrieved %s unique values with %s entries", uniqueVals.keySet().size(), uniqueVals.values().size()));
 
             var resBuilder = TopX.TopXResponse.newBuilder();
+            for (Map.Entry<String, MinMaxPriorityQueue<TopX.Candidate>> itemQueue : uniqueVals.entrySet()) {
 
-            for (Map.Entry<String, TopXQueue> itemQueue : uniqueVals.entrySet()) {
-                for (Item item : itemQueue.getValue()) {
-                    resBuilder.addCandidates(TopX.Candidate.newBuilder().setKey(ByteString.copyFrom(itemQueue.getKey(), "utf8"))
-                            .setReference(ByteString.copyFrom(item.item, "utf8"))
-                            .setTimestamp(item.timestamp));
-                }
+                resBuilder.addAllCandidates(itemQueue.getValue());
             }
             response = resBuilder.build();
             LOG.info(String.format("Retrieved %s candidates", response.getCandidatesList().size()));
-
-
         } catch (IOException ioe) {
             ResponseConverter.setControllerException(controller, ioe);
         }
