@@ -14,6 +14,8 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.impl.CoordinateArraySequence;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.WKTWriter;
@@ -31,6 +33,7 @@ public class WithinFilter extends FilterBase {
     private final byte[] family;
     private final byte[] lon_col;
     private final byte[] lat_col;
+    private final CoordinateArraySequence COORDINATES;
 
     // The longitude value parsed out of the column given by lon_col
     // This value is reset at the the beginning of each row scan.
@@ -44,6 +47,8 @@ public class WithinFilter extends FilterBase {
         this.family = family;
         this.lon_col = lonCol;
         this.lat_col = latCol;
+        // single-element array to be re-used
+        COORDINATES = new CoordinateArraySequence(new Coordinate[]{new Coordinate(Double.NaN, Double.NaN)});
     }
 
     /**
@@ -90,8 +95,7 @@ public class WithinFilter extends FilterBase {
                 return ReturnCode.NEXT_ROW;
             }
 
-            final Coordinate coord = new Coordinate(cell_lon.get(), cell_lat.get());
-            final Geometry point = GEOMETRY_FACTORY.createPoint(coord);
+            final Geometry point = getPoint(cell_lon.get(), cell_lat.get());
             final boolean isWithin = !query.covers(point);
             if (LOG.isDebugEnabled())
                 LOG.debug(String.format("row key=%s, lon=%f, lat=%f, filter applied=%s", rowKey(cell),
@@ -101,6 +105,13 @@ public class WithinFilter extends FilterBase {
                     ReturnCode.SKIP : ReturnCode.INCLUDE;
         }
         return ReturnCode.NEXT_COL;
+    }
+
+    private Point getPoint(double lon, double lat) {
+        Coordinate coordinate = COORDINATES.getCoordinate(0);
+        coordinate.setX(lon);
+        coordinate.setY(lat);
+        return GEOMETRY_FACTORY.createPoint(COORDINATES);
     }
 
     /**
